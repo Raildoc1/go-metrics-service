@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-type CounterHttpHandler struct {
+type CounterHTTPHandler struct {
 	counterLogic *logic.CounterLogic
 }
 
-func NewCounterHttpHandler(counterLogic *logic.CounterLogic) *CounterHttpHandler {
-	return &CounterHttpHandler{counterLogic}
+func NewCounterHTTPHandler(counterLogic *logic.CounterLogic) *CounterHTTPHandler {
+	return &CounterHTTPHandler{counterLogic}
 }
 
-func (chh *CounterHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (chh *CounterHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return

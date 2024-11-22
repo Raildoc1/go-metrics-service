@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-type GaugeHttpHandler struct {
+type GaugeHTTPHandler struct {
 	gaugeLogic *logic.GaugeLogic
 }
 
-func NewGaugeHttpHandler(gaugeLogic *logic.GaugeLogic) *GaugeHttpHandler {
-	return &GaugeHttpHandler{gaugeLogic}
+func NewGaugeHTTPHandler(gaugeLogic *logic.GaugeLogic) *GaugeHTTPHandler {
+	return &GaugeHTTPHandler{gaugeLogic}
 }
 
-func (ghh *GaugeHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ghh *GaugeHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return

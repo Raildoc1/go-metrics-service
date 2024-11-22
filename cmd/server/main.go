@@ -15,9 +15,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/update/gauge/{key}/{value}", handlers.NewGaugeHttpHandler(gaugeLogic))
-	mux.Handle("/update/counter/{key}/{value}", handlers.NewCounterHttpHandler(counterLogic))
-	mux.Handle("/", &handlers.DummyHttpHandler{})
+	mux.Handle("/update/gauge/{key}/{value}", handlers.NewGaugeHTTPHandler(gaugeLogic))
+	mux.Handle("/update/counter/{key}/{value}", handlers.NewCounterHTTPHandler(counterLogic))
 
 	err := http.ListenAndServe(":8080", mux)
 	if err != nil {
