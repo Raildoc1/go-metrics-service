@@ -1,7 +1,5 @@
 package storage
 
-import "fmt"
-
 type MemStorage struct {
 	data map[string]any
 }
@@ -14,7 +12,6 @@ func NewMemStorage() *MemStorage {
 
 func (ms *MemStorage) Set(key string, value any) {
 	ms.data[key] = value
-	fmt.Println(key, " : ", value)
 }
 
 func (ms *MemStorage) GetFloat(key string) (float64, bool) {
