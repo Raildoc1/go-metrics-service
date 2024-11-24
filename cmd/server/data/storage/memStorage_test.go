@@ -21,7 +21,7 @@ func TestGetExistingValue(t *testing.T) {
 		},
 		{
 			name:  "float64 negative zero",
-			value: float64(-0),
+			value: -float64(0),
 		},
 		{
 			name:  "int64 simple",
