@@ -1,4 +1,4 @@
-package runtimeMetricsCollector
+package collectors
 
 import (
 	"runtime"

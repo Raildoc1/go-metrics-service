@@ -1,15 +1,15 @@
 package main
 
 import (
-	"go-metrics-service/cmd/agent/metricsSender"
-	"go-metrics-service/cmd/agent/runtimeMetricsCollector"
+	"go-metrics-service/cmd/agent/metrics/collectors"
+	"go-metrics-service/cmd/agent/metrics/senders"
 	"time"
 )
 
 func main() {
-	mc := runtimeMetricsCollector.NewRuntimeMetricsCollector()
-	ms := metricsSender.NewMetricsSender(mc, "localhost:8080")
+	mc := collectors.NewRuntimeMetricsCollector()
+	ms := senders.NewMetricsSender(mc, "localhost:8080")
 	mc.StartPolling(2 * time.Second)
-	ms.StartSendingMetrics(10 * time.Second)
+	ms.StartSendingMetrics(2*time.Second, 10*time.Second)
 	select {}
 }

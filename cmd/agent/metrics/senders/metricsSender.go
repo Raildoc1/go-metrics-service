@@ -1,8 +1,8 @@
-package metricsSender
+package senders
 
 import (
 	"fmt"
-	"go-metrics-service/cmd/agent/runtimeMetricsCollector"
+	"go-metrics-service/cmd/agent/metrics/collectors"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -10,13 +10,13 @@ import (
 )
 
 type MetricsSender struct {
-	runtimeMetricsCollector *runtimeMetricsCollector.RuntimeMetricsCollector
+	runtimeMetricsCollector *collectors.RuntimeMetricsCollector
 	started                 bool
 	host                    string
 }
 
 func NewMetricsSender(
-	runtimeMetricsCollector *runtimeMetricsCollector.RuntimeMetricsCollector,
+	runtimeMetricsCollector *collectors.RuntimeMetricsCollector,
 	host string,
 ) *MetricsSender {
 	return &MetricsSender{
@@ -25,11 +25,12 @@ func NewMetricsSender(
 	}
 }
 
-func (ms *MetricsSender) StartSendingMetrics(interval time.Duration) {
+func (ms *MetricsSender) StartSendingMetrics(initialDelay, interval time.Duration) {
 	if ms.started {
 		panic("already started")
 	}
 	go func() {
+		time.Sleep(initialDelay)
 		for {
 			ms.sendMetrics()
 			time.Sleep(interval)
