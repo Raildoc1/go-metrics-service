@@ -1,16 +1,17 @@
 package logic
 
-import "go-metrics-service/cmd/server/storage"
+import (
+	"go-metrics-service/cmd/server/data/repositories"
+)
 
 type GaugeLogic struct {
-	storage storage.Storage
+	repository repositories.Repository[float64]
 }
 
-func NewGaugeLogic(storage storage.Storage) *GaugeLogic {
-	return &GaugeLogic{storage}
+func NewGaugeLogic(repository repositories.Repository[float64]) *GaugeLogic {
+	return &GaugeLogic{repository}
 }
 
-func (gl *GaugeLogic) Set(key string, value float64) {
-	extendedKey := storage.GaugeKeyPrefix + key
-	gl.storage.Set(extendedKey, value)
+func (gl *GaugeLogic) Set(key string, value float64) error {
+	return gl.repository.Set(key, value)
 }

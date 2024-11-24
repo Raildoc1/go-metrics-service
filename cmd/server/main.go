@@ -1,17 +1,21 @@
 package main
 
 import (
+	"go-metrics-service/cmd/server/data/repositories"
+	"go-metrics-service/cmd/server/data/storage"
 	"go-metrics-service/cmd/server/handlers"
 	"go-metrics-service/cmd/server/logic"
-	"go-metrics-service/cmd/server/storage"
 	"net/http"
 )
 
 func main() {
 	memStorage := storage.NewMemStorage()
 
-	counterLogic := logic.NewCounterLogic(memStorage)
-	gaugeLogic := logic.NewGaugeLogic(memStorage)
+	counterRepository := repositories.NewCounterRepository(memStorage)
+	gaugeRepository := repositories.NewGaugeRepository(memStorage)
+
+	counterLogic := logic.NewCounterLogic(counterRepository)
+	gaugeLogic := logic.NewGaugeLogic(gaugeRepository)
 
 	mux := http.NewServeMux()
 

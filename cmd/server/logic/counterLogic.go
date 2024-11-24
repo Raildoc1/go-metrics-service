@@ -1,23 +1,34 @@
 package logic
 
-import "go-metrics-service/cmd/server/storage"
+import (
+	"errors"
+	"go-metrics-service/cmd/server/data/repositories"
+	"go-metrics-service/cmd/server/data/storage"
+)
 
 type CounterLogic struct {
-	storage storage.Storage
+	repository repositories.Repository[int64]
 }
 
-func NewCounterLogic(storage storage.Storage) *CounterLogic {
-	return &CounterLogic{storage}
+func NewCounterLogic(repository repositories.Repository[int64]) *CounterLogic {
+	return &CounterLogic{
+		repository: repository,
+	}
 }
 
-func (cl *CounterLogic) Change(key string, delta int64) {
-	extendedKey := storage.CounterKeyPrefix + key
-	prevValue, ok := cl.storage.GetInt(extendedKey)
+func (cl *CounterLogic) Change(key string, delta int64) error {
+	prevValue, err := cl.repository.Get(key)
 
-	if !ok {
-		prevValue = int64(0)
+	if err != nil {
+		var notFoundError storage.NotFoundError
+		switch {
+		case errors.As(err, &notFoundError):
+			prevValue = int64(0)
+		default:
+			return err
+		}
 	}
 
 	newValue := prevValue + delta
-	cl.storage.Set(extendedKey, newValue)
+	return cl.repository.Set(key, newValue)
 }

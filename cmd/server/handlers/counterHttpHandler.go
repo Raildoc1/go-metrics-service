@@ -31,5 +31,7 @@ func (chh *CounterHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	chh.counterLogic.Change(key, delta)
+	if err := chh.counterLogic.Change(key, delta); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }

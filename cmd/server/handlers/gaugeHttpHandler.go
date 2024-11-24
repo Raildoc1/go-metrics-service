@@ -36,5 +36,7 @@ func (ghh *GaugeHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ghh.gaugeLogic.Set(key, value)
+	if err := ghh.gaugeLogic.Set(key, value); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
