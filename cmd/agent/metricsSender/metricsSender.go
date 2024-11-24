@@ -80,19 +80,22 @@ func (ms *MetricsSender) sendMetrics() {
 
 func (ms *MetricsSender) sendCounterDeltaWithErrorHandling(metricName string, delta int64) {
 	resp, err := ms.sendCounterDelta(metricName, delta)
-	if err != nil {
-		fmt.Printf("%s: %s\n", metricName, err.Error())
-	} else if resp.StatusCode != http.StatusOK {
-		fmt.Printf("%s: status %s\n", metricName, resp.StatusCode)
-	}
+	handleResponse(metricName, resp, err)
 }
 
 func (ms *MetricsSender) sendGaugeWithErrorHandling(metricName string, value float64) {
 	resp, err := ms.sendGauge(metricName, value)
+	handleResponse(metricName, resp, err)
+}
+
+func handleResponse(metricName string, resp *http.Response, err error) {
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		fmt.Printf("%s: %s\n", metricName, err.Error())
-	} else if resp.StatusCode != http.StatusOK {
-		fmt.Printf("%s: status %s\n", metricName, resp.StatusCode)
+	} else if resp != nil && resp.StatusCode != http.StatusOK {
+		fmt.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode))
 	}
 }
 
