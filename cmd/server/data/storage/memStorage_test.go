@@ -3,6 +3,7 @@ package storage
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"math"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestGetExistingValue(t *testing.T) {
 		},
 		{
 			name:  "float64 negative zero",
-			value: -float64(0),
+			value: math.Copysign(0, -1),
 		},
 		{
 			name:  "int64 simple",
