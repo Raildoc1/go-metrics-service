@@ -1,8 +1,8 @@
 package main
 
 import (
-	"go-metrics-service/cmd/agent/metrics/collectors"
-	"go-metrics-service/cmd/agent/metrics/senders"
+	"go-metrics-service/internal/agent/metrics/collectors"
+	"go-metrics-service/internal/agent/metrics/senders"
 	"time"
 )
 

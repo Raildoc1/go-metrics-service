@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"go-metrics-service/cmd/server/data/storage"
+	"go-metrics-service/internal/server/data/storage"
 )
 
 type CounterRepository struct {

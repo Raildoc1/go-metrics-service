@@ -1,7 +1,7 @@
 package logic
 
 import (
-	"go-metrics-service/cmd/server/data/repositories"
+	"go-metrics-service/internal/server/data/repositories"
 )
 
 type GaugeLogic struct {

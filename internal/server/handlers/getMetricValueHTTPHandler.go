@@ -1,0 +1,83 @@
+package handlers
+
+import (
+	"errors"
+	"github.com/go-chi/chi/v5"
+	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/data/repositories"
+	"go-metrics-service/internal/server/data/storage"
+	"net/http"
+	"strconv"
+)
+
+type getMetricValueHTTPHandler struct {
+	counterRepository *repositories.CounterRepository
+	gaugeRepository   *repositories.GaugeRepository
+}
+
+func NewGetMetricValueHTTPHandler(
+	counterRepository *repositories.CounterRepository,
+	gaugeRepository *repositories.GaugeRepository,
+) http.Handler {
+	return &getMetricValueHTTPHandler{
+		counterRepository: counterRepository,
+		gaugeRepository:   gaugeRepository,
+	}
+}
+
+func (h *getMetricValueHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	key := chi.URLParam(r, protocol.KeyParam)
+	if len(key) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	metricType := chi.URLParam(r, protocol.TypeParam)
+	switch metricType {
+	case protocol.Gauge:
+		h.handleGauge(key, w)
+	case protocol.Counter:
+		h.handleCounter(key, w)
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func (h *getMetricValueHTTPHandler) handleGauge(key string, w http.ResponseWriter) {
+	value, err := h.gaugeRepository.Get(key)
+	if err != nil {
+		handleError(w, err)
+	} else {
+		writeResponse(w, strconv.FormatFloat(value, 'f', -1, 64))
+	}
+}
+
+func (h *getMetricValueHTTPHandler) handleCounter(key string, w http.ResponseWriter) {
+	value, err := h.counterRepository.Get(key)
+	if err != nil {
+		handleError(w, err)
+	} else {
+		writeResponse(w, strconv.FormatInt(value, 10))
+	}
+}
+
+func handleError(w http.ResponseWriter, err error) {
+	var notFoundError storage.NotFoundError
+	switch {
+	case errors.As(err, &notFoundError):
+		w.WriteHeader(http.StatusNotFound)
+		return
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func writeResponse(w http.ResponseWriter, value string) {
+	w.Header().Set("Content-Type", "text/plain")
+	_, err := w.Write([]byte(value))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

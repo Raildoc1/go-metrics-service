@@ -2,7 +2,7 @@ package senders
 
 import (
 	"fmt"
-	"go-metrics-service/cmd/agent/metrics/collectors"
+	"go-metrics-service/internal/agent/metrics/collectors"
 	"math/rand"
 	"net/http"
 	"strconv"

@@ -1,10 +1,12 @@
 package main
 
 import (
-	"go-metrics-service/cmd/server/data/repositories"
-	"go-metrics-service/cmd/server/data/storage"
-	"go-metrics-service/cmd/server/handlers"
-	"go-metrics-service/cmd/server/logic"
+	"github.com/go-chi/chi/v5"
+	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/data/repositories"
+	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/handlers"
+	"go-metrics-service/internal/server/logic"
 	"net/http"
 )
 
@@ -17,13 +19,22 @@ func main() {
 	counterLogic := logic.NewCounterLogic(counterRepository)
 	gaugeLogic := logic.NewGaugeLogic(gaugeRepository)
 
-	mux := http.NewServeMux()
+	updateMetricValueHTTPHandler := handlers.NewUpdateMetricValueHTTPHandler(
+		counterLogic,
+		gaugeLogic,
+	)
 
-	mux.Handle("/update/gauge/{key}/{value}", handlers.NewGaugeHTTPHandler(gaugeLogic))
-	mux.Handle("/update/counter/{key}/{value}", handlers.NewCounterHTTPHandler(counterLogic))
-	mux.Handle("/update/{typename}/{key}/{value}", &handlers.DummyHTTPHandler{})
+	getMetricValueHTTPHandler := handlers.NewGetMetricValueHTTPHandler(
+		counterRepository,
+		gaugeRepository,
+	)
 
-	err := http.ListenAndServe(":8080", mux)
+	r := chi.NewRouter()
+
+	r.Post(protocol.UpdateMetricValueUrl, updateMetricValueHTTPHandler.ServeHTTP)
+	r.Get(protocol.GetMetricValueUrl, getMetricValueHTTPHandler.ServeHTTP)
+
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		panic(err)
 	}

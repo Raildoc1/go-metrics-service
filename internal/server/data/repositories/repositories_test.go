@@ -2,7 +2,7 @@ package repositories
 
 import (
 	"github.com/stretchr/testify/require"
-	"go-metrics-service/cmd/server/data/storage"
+	"go-metrics-service/internal/server/data/storage"
 	"testing"
 )
 

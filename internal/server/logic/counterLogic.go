@@ -2,8 +2,8 @@ package logic
 
 import (
 	"errors"
-	"go-metrics-service/cmd/server/data/repositories"
-	"go-metrics-service/cmd/server/data/storage"
+	"go-metrics-service/internal/server/data/repositories"
+	"go-metrics-service/internal/server/data/storage"
 )
 
 type CounterLogic struct {
