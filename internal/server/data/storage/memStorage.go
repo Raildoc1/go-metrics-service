@@ -6,7 +6,7 @@ type MemStorage struct {
 	data map[string]any
 }
 
-func NewMemStorage() *MemStorage {
+func NewMemStorage() Storage {
 	return &MemStorage{
 		data: make(map[string]any),
 	}
