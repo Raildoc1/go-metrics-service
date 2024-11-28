@@ -27,10 +27,15 @@ func NewServer(storage storage.Storage) http.Handler {
 		gaugeRepository,
 	)
 
+	getAllMetricsHTTPHandler := handlers.NewGetAllMetricsHTTPHandler(
+		storage,
+	)
+
 	router := chi.NewRouter()
 
 	router.Post(protocol.UpdateMetricValueURL, updateMetricValueHTTPHandler.ServeHTTP)
 	router.Get(protocol.GetMetricValueURL, getMetricValueHTTPHandler.ServeHTTP)
+	router.Get(protocol.GetAllMetricsURL, getAllMetricsHTTPHandler.ServeHTTP)
 
 	return router
 }

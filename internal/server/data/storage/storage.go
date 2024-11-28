@@ -7,6 +7,7 @@ import (
 type Storage interface {
 	Set(key string, value any)
 	Get(key string) (any, bool)
+	GetAll() map[string]any
 }
 
 func Set[T any](s Storage, key string, value T) error {

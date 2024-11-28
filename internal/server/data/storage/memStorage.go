@@ -21,3 +21,7 @@ func (m *MemStorage) Get(key string) (any, bool) {
 	v, ok := m.data[key]
 	return v, ok
 }
+
+func (m *MemStorage) GetAll() map[string]any {
+	return m.data
+}
