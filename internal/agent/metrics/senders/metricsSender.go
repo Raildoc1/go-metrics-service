@@ -2,9 +2,10 @@ package senders
 
 import (
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"go-metrics-service/internal/agent/metrics/collectors"
+	"go-metrics-service/internal/common/protocol"
 	"math/rand"
-	"net/http"
 	"strconv"
 	"time"
 )
@@ -80,50 +81,37 @@ func (ms *MetricsSender) sendMetrics() {
 }
 
 func (ms *MetricsSender) sendCounterDeltaWithErrorHandling(metricName string, delta int64) {
-	resp, err := ms.sendCounterDelta(metricName, delta)
+	resp, err := ms.sendUpdate(protocol.Counter, metricName, strconv.FormatInt(delta, 10))
 	handleResponse(metricName, resp, err)
 }
 
 func (ms *MetricsSender) sendGaugeWithErrorHandling(metricName string, value float64) {
-	resp, err := ms.sendGauge(metricName, value)
+	resp, err := ms.sendUpdate(protocol.Gauge, metricName, strconv.FormatFloat(value, 'f', -1, 64))
 	handleResponse(metricName, resp, err)
 }
 
-func handleResponse(metricName string, resp *http.Response, err error) {
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
+func handleResponse(metricName string, resp *resty.Response, err error) {
 	if err != nil {
 		fmt.Printf("%s: %s\n", metricName, err.Error())
-	} else if resp != nil && resp.StatusCode != http.StatusOK {
-		fmt.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode))
+	} else if resp.StatusCode() != 200 {
+		fmt.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode()))
 	}
 }
 
-func (ms *MetricsSender) sendCounterDelta(metricName string, delta int64) (*http.Response, error) {
-	return http.Post(
-		buildUpdateRequest(
-			ms.host,
-			"counter",
-			metricName,
-			strconv.FormatInt(delta, 10),
-		),
-		"text/plain",
-		nil,
-	)
-}
+func (ms *MetricsSender) sendUpdate(metricType string, metricKey string, metricValue string) (*resty.Response, error) {
+	url := "http://" + ms.host + protocol.UpdateMetricValueUrl
 
-func (ms *MetricsSender) sendGauge(metricName string, value float64) (*http.Response, error) {
-	return http.Post(
-		buildUpdateRequest(
-			ms.host,
-			"gauge",
-			metricName,
-			strconv.FormatFloat(value, 'f', -1, 64),
-		),
-		"text/plain",
-		nil,
-	)
+	resp, err := resty.New().
+		SetPathParams(
+			map[string]string{
+				protocol.TypeParam:  metricType,
+				protocol.KeyParam:   metricKey,
+				protocol.ValueParam: metricValue,
+			}).
+		R().
+		Post(url)
+
+	return resp, err
 }
 
 func buildUpdateRequest(host, metricType, metricKey, metricValue string) string {
