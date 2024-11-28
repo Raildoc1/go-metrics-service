@@ -8,7 +8,7 @@ type GaugeRepository struct {
 	storage storage.Storage
 }
 
-func NewGaugeRepository(storage storage.Storage) *GaugeRepository {
+func NewGaugeRepository(storage storage.Storage) Repository[float64] {
 	return &GaugeRepository{
 		storage: storage,
 	}

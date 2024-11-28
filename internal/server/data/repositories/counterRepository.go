@@ -8,7 +8,7 @@ type CounterRepository struct {
 	storage storage.Storage
 }
 
-func NewCounterRepository(storage storage.Storage) *CounterRepository {
+func NewCounterRepository(storage storage.Storage) Repository[int64] {
 	return &CounterRepository{
 		storage: storage,
 	}

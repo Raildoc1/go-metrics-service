@@ -11,13 +11,13 @@ import (
 )
 
 type getMetricValueHTTPHandler struct {
-	counterRepository *repositories.CounterRepository
-	gaugeRepository   *repositories.GaugeRepository
+	counterRepository repositories.Repository[int64]
+	gaugeRepository   repositories.Repository[float64]
 }
 
 func NewGetMetricValueHTTPHandler(
-	counterRepository *repositories.CounterRepository,
-	gaugeRepository *repositories.GaugeRepository,
+	counterRepository repositories.Repository[int64],
+	gaugeRepository repositories.Repository[float64],
 ) http.Handler {
 	return &getMetricValueHTTPHandler{
 		counterRepository: counterRepository,
