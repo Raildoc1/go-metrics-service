@@ -99,7 +99,7 @@ func handleResponse(metricName string, resp *resty.Response, err error) {
 }
 
 func (ms *MetricsSender) sendUpdate(metricType string, metricKey string, metricValue string) (*resty.Response, error) {
-	url := "http://" + ms.host + protocol.UpdateMetricValueUrl
+	url := "http://" + ms.host + protocol.UpdateMetricValueURL
 
 	resp, err := resty.New().
 		SetPathParams(

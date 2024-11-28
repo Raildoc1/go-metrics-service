@@ -29,8 +29,8 @@ func NewServer(storage storage.Storage) http.Handler {
 
 	router := chi.NewRouter()
 
-	router.Post(protocol.UpdateMetricValueUrl, updateMetricValueHTTPHandler.ServeHTTP)
-	router.Get(protocol.GetMetricValueUrl, getMetricValueHTTPHandler.ServeHTTP)
+	router.Post(protocol.UpdateMetricValueURL, updateMetricValueHTTPHandler.ServeHTTP)
+	router.Get(protocol.GetMetricValueURL, getMetricValueHTTPHandler.ServeHTTP)
 
 	return router
 }

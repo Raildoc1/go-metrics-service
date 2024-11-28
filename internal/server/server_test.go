@@ -36,7 +36,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "add value",
 			method:   resty.MethodPost,
-			restPath: protocol.UpdateMetricValueUrl,
+			restPath: protocol.UpdateMetricValueURL,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test1",
@@ -51,7 +51,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueUrl,
+			restPath: protocol.GetMetricValueURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test1",
@@ -65,7 +65,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "subtract value",
 			method:   resty.MethodPost,
-			restPath: protocol.UpdateMetricValueUrl,
+			restPath: protocol.UpdateMetricValueURL,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test1",
@@ -80,7 +80,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueUrl,
+			restPath: protocol.GetMetricValueURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test1",
@@ -94,7 +94,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get non-existing value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueUrl,
+			restPath: protocol.GetMetricValueURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test2",
@@ -108,7 +108,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value with wrong type",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueUrl,
+			restPath: protocol.GetMetricValueURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Gauge,
 				protocol.KeyParam:  "test1",
