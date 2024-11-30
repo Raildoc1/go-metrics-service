@@ -62,9 +62,8 @@ func (h *getMetricValueHTTPHandler) handleCounter(key string, w http.ResponseWri
 }
 
 func handleError(w http.ResponseWriter, err error) {
-	var notFoundError storage.NotFoundError
 	switch {
-	case errors.As(err, &notFoundError):
+	case errors.Is(err, storage.NotFoundError):
 		w.WriteHeader(http.StatusNotFound)
 		return
 	default:

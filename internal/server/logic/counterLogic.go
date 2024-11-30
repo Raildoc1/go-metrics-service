@@ -20,9 +20,8 @@ func (cl *CounterLogic) Change(key string, delta int64) error {
 	prevValue, err := cl.repository.Get(key)
 
 	if err != nil {
-		var notFoundError storage.NotFoundError
 		switch {
-		case errors.As(err, &notFoundError):
+		case errors.Is(err, storage.NotFoundError):
 			prevValue = int64(0)
 		default:
 			return err
