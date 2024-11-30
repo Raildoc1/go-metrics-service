@@ -26,7 +26,7 @@ func main() {
 	if *pollingFreqSeconds <= 0 {
 		panic("polling frequency must be greater than zero")
 	}
-	
+
 	pollingFreq := time.Duration(*pollingFreqSeconds) * time.Second
 	sendingFreq := time.Duration(*sendingFreqSeconds) * time.Second
 

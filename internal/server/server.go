@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repositories"
@@ -11,7 +10,7 @@ import (
 	"net/http"
 )
 
-func Run(storage storage.Storage, addr string) error {
+func NewServer(storage storage.Storage) http.Handler {
 	counterRepository := repositories.NewCounterRepository(storage)
 	gaugeRepository := repositories.NewGaugeRepository(storage)
 
@@ -38,7 +37,5 @@ func Run(storage storage.Storage, addr string) error {
 	router.Get(protocol.GetMetricValueURL, getMetricValueHTTPHandler.ServeHTTP)
 	router.Get(protocol.GetAllMetricsURL, getAllMetricsHTTPHandler.ServeHTTP)
 
-	fmt.Printf("starting server on %s\n", addr)
-
-	return http.ListenAndServe(addr, router)
+	return router
 }

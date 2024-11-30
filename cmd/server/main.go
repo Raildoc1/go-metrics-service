@@ -5,6 +5,7 @@ import (
 	"go-metrics-service/cmd/common"
 	"go-metrics-service/internal/server"
 	"go-metrics-service/internal/server/data/storage"
+	"net/http"
 )
 
 func main() {
@@ -17,7 +18,8 @@ func main() {
 	flag.Parse()
 
 	memStorage := storage.NewMemStorage()
-	err := server.Run(memStorage, serverAddress.String())
+	handler := server.NewServer(memStorage)
+	err := http.ListenAndServe(serverAddress.String(), handler)
 	if err != nil {
 		panic(err)
 	}
