@@ -16,9 +16,9 @@ func TestKeysCollision(t *testing.T) {
 
 	_, err := gRep.Get("test_counter")
 	require.Error(t, err)
-	require.ErrorIs(t, err, WrongTypeError)
+	require.ErrorIs(t, err, ErrWrongType)
 
 	err = gRep.Set("test_counter", 3.5)
 	require.Error(t, err)
-	require.ErrorIs(t, err, WrongTypeError)
+	require.ErrorIs(t, err, ErrWrongType)
 }

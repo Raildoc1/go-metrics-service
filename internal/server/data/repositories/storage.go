@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	WrongTypeError = errors.New("wrong type")
-	NotFoundError  = errors.New("not found")
+	ErrWrongType = errors.New("wrong type")
+	ErrNotFound  = errors.New("not found")
 )
 
 type Storage interface {
@@ -45,7 +45,7 @@ func get[T any](s Storage, key string) (T, error) {
 func createNotFoundError(key string) error {
 	return fmt.Errorf(
 		"%w: '%s' not found",
-		NotFoundError,
+		ErrNotFound,
 		key,
 	)
 }
@@ -53,7 +53,7 @@ func createNotFoundError(key string) error {
 func createWrongTypeError(requested, actual reflect.Type) error {
 	return fmt.Errorf(
 		"%w: expected type %s but data contains %s",
-		WrongTypeError,
+		ErrWrongType,
 		requested,
 		actual,
 	)

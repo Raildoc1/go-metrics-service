@@ -20,7 +20,7 @@ func (cl *CounterLogic) Change(key string, delta int64) error {
 
 	if err != nil {
 		switch {
-		case errors.Is(err, repositories.NotFoundError):
+		case errors.Is(err, repositories.ErrNotFound):
 			prevValue = int64(0)
 		default:
 			return err
