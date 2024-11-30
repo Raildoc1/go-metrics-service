@@ -3,7 +3,6 @@ package logic
 import (
 	"errors"
 	"go-metrics-service/internal/server/data/repositories"
-	"go-metrics-service/internal/server/data/storage"
 )
 
 type CounterLogic struct {
@@ -21,7 +20,7 @@ func (cl *CounterLogic) Change(key string, delta int64) error {
 
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.NotFoundError):
+		case errors.Is(err, repositories.NotFoundError):
 			prevValue = int64(0)
 		default:
 			return err

@@ -1,4 +1,4 @@
-package storage
+package repositories
 
 import (
 	"errors"
@@ -17,32 +17,32 @@ type Storage interface {
 	GetAll() map[string]any
 }
 
-func Set[T any](s Storage, key string, value T) error {
+func set[T any](s Storage, key string, value T) error {
 	if val, ok := s.Get(key); ok {
 		if _, ok := val.(T); !ok {
 			var zero T
-			return CreateWrongTypeError(reflect.TypeOf(zero), reflect.TypeOf(val))
+			return createWrongTypeError(reflect.TypeOf(zero), reflect.TypeOf(val))
 		}
 	}
 	s.Set(key, value)
 	return nil
 }
 
-func Get[T any](s Storage, key string) (T, error) {
+func get[T any](s Storage, key string) (T, error) {
 	val, ok := s.Get(key)
 	if !ok {
 		var zero T
-		return zero, CreateNotFoundError(key)
+		return zero, createNotFoundError(key)
 	}
 	castedValue, ok := val.(T)
 	if !ok {
 		var zero T
-		return zero, CreateWrongTypeError(reflect.TypeOf(zero), reflect.TypeOf(val))
+		return zero, createWrongTypeError(reflect.TypeOf(zero), reflect.TypeOf(val))
 	}
 	return castedValue, nil
 }
 
-func CreateNotFoundError(key string) error {
+func createNotFoundError(key string) error {
 	return fmt.Errorf(
 		"%w: '%s' not found",
 		NotFoundError,
@@ -50,7 +50,7 @@ func CreateNotFoundError(key string) error {
 	)
 }
 
-func CreateWrongTypeError(requested, actual reflect.Type) error {
+func createWrongTypeError(requested, actual reflect.Type) error {
 	return fmt.Errorf(
 		"%w: expected type %s but data contains %s",
 		WrongTypeError,

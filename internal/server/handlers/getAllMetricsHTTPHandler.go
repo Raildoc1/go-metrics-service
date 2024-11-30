@@ -3,17 +3,17 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/data/repositories"
 	"html/template"
 	"net/http"
 )
 
 type getAllMetricsHTTPHandler struct {
-	storage storage.Storage
+	storage repositories.Storage
 }
 
 func NewGetAllMetricsHTTPHandler(
-	storage storage.Storage,
+	storage repositories.Storage,
 ) http.Handler {
 	return &getAllMetricsHTTPHandler{
 		storage: storage,

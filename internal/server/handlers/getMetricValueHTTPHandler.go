@@ -5,7 +5,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repositories"
-	"go-metrics-service/internal/server/data/storage"
 	"net/http"
 	"strconv"
 )
@@ -63,7 +62,7 @@ func (h *getMetricValueHTTPHandler) handleCounter(key string, w http.ResponseWri
 
 func handleError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, storage.NotFoundError):
+	case errors.Is(err, repositories.NotFoundError):
 		w.WriteHeader(http.StatusNotFound)
 		return
 	default:

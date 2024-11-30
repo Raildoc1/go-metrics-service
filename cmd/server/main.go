@@ -3,7 +3,7 @@ package main
 import (
 	"go-metrics-service/cmd/server/config"
 	"go-metrics-service/internal/server"
-	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/data/storage/memory"
 	"log"
 	"net/http"
 )
@@ -13,7 +13,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	memStorage := storage.NewMemStorage()
+	memStorage := memory.NewMemStorage()
 	handler := server.NewServer(memStorage)
 	err = http.ListenAndServe(cfg.ServerAddress, handler)
 	if err != nil {

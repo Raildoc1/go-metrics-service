@@ -5,14 +5,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/data/storage/memory"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func setupServer() *httptest.Server {
-	memStorage := storage.NewMemStorage()
+	memStorage := memory.NewMemStorage()
 	handler := NewServer(memStorage)
 	return httptest.NewServer(handler)
 }

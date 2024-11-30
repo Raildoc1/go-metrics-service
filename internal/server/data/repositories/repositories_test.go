@@ -2,12 +2,12 @@ package repositories
 
 import (
 	"github.com/stretchr/testify/require"
-	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/data/storage/memory"
 	"testing"
 )
 
 func TestKeysCollision(t *testing.T) {
-	ms := storage.NewMemStorage()
+	ms := memory.NewMemStorage()
 
 	cRep := NewCounterRepository(ms)
 	gRep := NewGaugeRepository(ms)
@@ -16,9 +16,9 @@ func TestKeysCollision(t *testing.T) {
 
 	_, err := gRep.Get("test_counter")
 	require.Error(t, err)
-	require.ErrorIs(t, err, storage.WrongTypeError)
+	require.ErrorIs(t, err, WrongTypeError)
 
 	err = gRep.Set("test_counter", 3.5)
 	require.Error(t, err)
-	require.ErrorIs(t, err, storage.WrongTypeError)
+	require.ErrorIs(t, err, WrongTypeError)
 }

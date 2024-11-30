@@ -4,13 +4,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repositories"
-	"go-metrics-service/internal/server/data/storage"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"net/http"
 )
 
-func NewServer(storage storage.Storage) http.Handler {
+func NewServer(storage repositories.Storage) http.Handler {
 	counterRepository := repositories.NewCounterRepository(storage)
 	gaugeRepository := repositories.NewGaugeRepository(storage)
 
