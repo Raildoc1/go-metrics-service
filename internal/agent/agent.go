@@ -1,15 +1,15 @@
 package agent
 
 import (
+	"go-metrics-service/internal/agent/config"
 	"go-metrics-service/internal/agent/metrics/collectors"
 	"go-metrics-service/internal/agent/metrics/senders"
-	"time"
 )
 
-func Run(serverAddress string, pollingFreq, sendingFreq time.Duration) {
+func Run(config config.Config) {
 	mc := collectors.NewRuntimeMetricsCollector()
-	ms := senders.NewMetricsSender(mc, serverAddress)
-	mc.StartPolling(pollingFreq)
-	ms.StartSendingMetrics(pollingFreq, sendingFreq)
+	ms := senders.NewMetricsSender(mc, config.ServerAddress)
+	mc.StartPolling(config.PollingFreq)
+	ms.StartSendingMetrics(config.PollingFreq, config.SendingFreq)
 	select {}
 }
