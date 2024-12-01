@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"fmt"
 	"go-metrics-service/internal/server/data/repositories"
 )
 
@@ -13,5 +14,9 @@ func NewGaugeLogic(repository repositories.Repository[float64]) *GaugeLogic {
 }
 
 func (gl *GaugeLogic) Set(key string, value float64) error {
-	return gl.repository.Set(key, value)
+	err := gl.repository.Set(key, value)
+	if err != nil {
+		return fmt.Errorf("%w: set gauge", err)
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"fmt"
 	"go-metrics-service/internal/server/data/repositories"
 )
 
@@ -17,16 +18,18 @@ func NewCounterLogic(repository repositories.Repository[int64]) *CounterLogic {
 
 func (cl *CounterLogic) Change(key string, delta int64) error {
 	prevValue, err := cl.repository.Get(key)
-
 	if err != nil {
 		switch {
 		case errors.Is(err, repositories.ErrNotFound):
 			prevValue = int64(0)
 		default:
-			return err
+			return fmt.Errorf("%w: getting '%s' failed", err, key)
 		}
 	}
-
 	newValue := prevValue + delta
-	return cl.repository.Set(key, newValue)
+	err = cl.repository.Set(key, newValue)
+	if err != nil {
+		return fmt.Errorf("%w: setting '%s' failed", err, key)
+	}
+	return nil
 }

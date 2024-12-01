@@ -36,5 +36,4 @@ func (h *getAllMetricsHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 }

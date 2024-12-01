@@ -1,12 +1,13 @@
 package server
 
 import (
-	"github.com/go-chi/chi/v5"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repositories"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func NewServer(storage repositories.Storage) http.Handler {

@@ -23,7 +23,7 @@ func (s *ServerAddress) Set(flagValue string) error {
 	s.Host = split[0]
 	port, err := strconv.Atoi(split[1])
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: port parsing failed", err)
 	}
 	if port < 0 || port > 65535 {
 		return fmt.Errorf("invalid port: %d", port)

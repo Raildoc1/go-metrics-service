@@ -1,14 +1,15 @@
 package server
 
 import (
-	"github.com/go-resty/resty/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/storage/memory"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupServer() *httptest.Server {

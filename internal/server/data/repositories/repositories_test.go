@@ -1,9 +1,10 @@
 package repositories
 
 import (
-	"github.com/stretchr/testify/require"
 	"go-metrics-service/internal/server/data/storage/memory"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeysCollision(t *testing.T) {

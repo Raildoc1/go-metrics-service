@@ -2,12 +2,14 @@ package senders
 
 import (
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"go-metrics-service/internal/agent/metrics/collectors"
 	"go-metrics-service/internal/common/protocol"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type MetricsSender struct {
@@ -93,7 +95,7 @@ func (ms *MetricsSender) sendGaugeWithErrorHandling(metricName string, value flo
 func handleResponse(metricName string, resp *resty.Response, err error) {
 	if err != nil {
 		fmt.Printf("%s: %s\n", metricName, err.Error())
-	} else if resp.StatusCode() != 200 {
+	} else if resp.StatusCode() != http.StatusOK {
 		fmt.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode()))
 	}
 }
@@ -111,9 +113,9 @@ func (ms *MetricsSender) sendUpdate(metricType string, metricKey string, metricV
 		R().
 		Post(url)
 
-	return resp, err
-}
+	if err != nil {
+		return nil, fmt.Errorf("%w: update failed", err)
+	}
 
-func buildUpdateRequest(host, metricType, metricKey, metricValue string) string {
-	return fmt.Sprintf("http://%s/update/%s/%s/%s", host, metricType, metricKey, metricValue)
+	return resp, nil
 }

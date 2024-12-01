@@ -6,10 +6,10 @@ import (
 	"go-metrics-service/internal/agent/metrics/senders"
 )
 
-func Run(config config.Config) {
+func Run(cfg config.Config) {
 	mc := collectors.NewRuntimeMetricsCollector()
-	ms := senders.NewMetricsSender(mc, config.ServerAddress)
-	mc.StartPolling(config.PollingFreq)
-	ms.StartSendingMetrics(config.PollingFreq, config.SendingFreq)
+	ms := senders.NewMetricsSender(mc, cfg.ServerAddress)
+	mc.StartPolling(cfg.PollingFreq)
+	ms.StartSendingMetrics(cfg.PollingFreq, cfg.SendingFreq)
 	select {}
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"go-metrics-service/cmd/common"
 	commonConfig "go-metrics-service/cmd/common/config"
 	"os"
@@ -24,7 +25,7 @@ func Load() (Config, error) {
 	if valStr, ok := os.LookupEnv(commonConfig.ServerAddressEnv); ok {
 		err := serverAddress.Set(valStr)
 		if err != nil {
-			return Config{}, err
+			return Config{}, fmt.Errorf("%w: server address parsing failed", err)
 		}
 	}
 

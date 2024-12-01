@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"errors"
-	"github.com/go-chi/chi/v5"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repositories"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type getMetricValueHTTPHandler struct {

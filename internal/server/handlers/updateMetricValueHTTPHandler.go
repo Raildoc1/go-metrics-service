@@ -1,11 +1,12 @@
 package handlers
 
 import (
-	"github.com/go-chi/chi/v5"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/logic"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type updateMetricValueHTTPHandler struct {

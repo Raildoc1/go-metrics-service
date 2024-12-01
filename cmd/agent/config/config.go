@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"go-metrics-service/cmd/common"
 	commonConfig "go-metrics-service/cmd/common/config"
 	agent "go-metrics-service/internal/agent/config"
@@ -12,10 +13,10 @@ import (
 )
 
 const (
-	sendingFreqSecondsFlag = "r"
-	sendingFreqSecondsEnv  = "REPORT_INTERVAL"
-	pollingFreqSecondsFlag = "p"
-	pollingFreqSecondsEnv  = "POLL_INTERVAL"
+	sendingIntervalSecondsFlag = "r"
+	sendingIntervalSecondsEnv  = "REPORT_INTERVAL"
+	pollingIntervalSecondsFlag = "p"
+	pollingIntervalSecondsEnv  = "POLL_INTERVAL"
 )
 
 const (
@@ -34,15 +35,15 @@ func Load() (Config, error) {
 	}
 
 	flag.Var(serverAddress, commonConfig.ServerAddressFlag, "Server address host:port")
-	
+
 	sendingIntervalSeconds := flag.Int(
-		sendingFreqSecondsFlag,
+		sendingIntervalSecondsFlag,
 		defaultSendingIntervalSeconds,
 		"Metrics sending frequency in seconds",
 	)
 
 	pollingIntervalSeconds := flag.Int(
-		pollingFreqSecondsFlag,
+		pollingIntervalSecondsFlag,
 		defaultPollingIntervalSeconds,
 		"Metrics polling frequency in seconds",
 	)
@@ -60,22 +61,22 @@ func Load() (Config, error) {
 	if valStr, ok := os.LookupEnv(commonConfig.ServerAddressEnv); ok {
 		err := serverAddress.Set(valStr)
 		if err != nil {
-			return Config{}, err
+			return Config{}, fmt.Errorf("%w: server address parsing failed", err)
 		}
 	}
 
-	if valStr, ok := os.LookupEnv(sendingFreqSecondsEnv); ok {
+	if valStr, ok := os.LookupEnv(sendingIntervalSecondsEnv); ok {
 		val, err := strconv.Atoi(valStr)
 		if err != nil {
-			return Config{}, err
+			return Config{}, fmt.Errorf("%w: '%s' env variable parsing failed", err, sendingIntervalSecondsEnv)
 		}
 		*sendingIntervalSeconds = val
 	}
 
-	if valStr, ok := os.LookupEnv(pollingFreqSecondsEnv); ok {
+	if valStr, ok := os.LookupEnv(pollingIntervalSecondsEnv); ok {
 		val, err := strconv.Atoi(valStr)
 		if err != nil {
-			return Config{}, err
+			return Config{}, fmt.Errorf("%w: '%s' env variable parsing failed", err, pollingIntervalSecondsEnv)
 		}
 		*pollingIntervalSeconds = val
 	}
