@@ -18,27 +18,42 @@ const (
 	pollingFreqSecondsEnv  = "POLL_INTERVAL"
 )
 
+const (
+	defaultSendingIntervalSeconds = 10
+	defaultPollingIntervalSeconds = 2
+)
+
 type Config struct {
 	Agent agent.Config
 }
 
 func Load() (Config, error) {
 	serverAddress := &common.ServerAddress{
-		Host: "localhost",
-		Port: 8080,
+		Host: commonConfig.DefaultServerHost,
+		Port: commonConfig.DefaultServerPort,
 	}
 
 	flag.Var(serverAddress, commonConfig.ServerAddressFlag, "Server address host:port")
-	sendingFreqSeconds := flag.Int(sendingFreqSecondsFlag, 10, "Metrics sending frequency in seconds")
-	pollingFreqSeconds := flag.Int(pollingFreqSecondsFlag, 2, "Metrics polling frequency in seconds")
+	
+	sendingIntervalSeconds := flag.Int(
+		sendingFreqSecondsFlag,
+		defaultSendingIntervalSeconds,
+		"Metrics sending frequency in seconds",
+	)
+
+	pollingIntervalSeconds := flag.Int(
+		pollingFreqSecondsFlag,
+		defaultPollingIntervalSeconds,
+		"Metrics polling frequency in seconds",
+	)
 
 	flag.Parse()
 
-	if *sendingFreqSeconds <= 0 {
+	if *sendingIntervalSeconds <= 0 {
 		return Config{}, errors.New("sending frequency must be greater than zero")
 	}
 
-	if *pollingFreqSeconds <= 0 {
+	if *pollingIntervalSeconds <= 0 {
 		return Config{}, errors.New("polling frequency must be greater than zero")
 	}
 
@@ -54,7 +69,7 @@ func Load() (Config, error) {
 		if err != nil {
 			return Config{}, err
 		}
-		*sendingFreqSeconds = val
+		*sendingIntervalSeconds = val
 	}
 
 	if valStr, ok := os.LookupEnv(pollingFreqSecondsEnv); ok {
@@ -62,19 +77,19 @@ func Load() (Config, error) {
 		if err != nil {
 			return Config{}, err
 		}
-		*pollingFreqSeconds = val
+		*pollingIntervalSeconds = val
 	}
 
-	if *sendingFreqSeconds <= 0 {
+	if *sendingIntervalSeconds <= 0 {
 		return Config{}, errors.New("sending frequency must be greater than zero")
 	}
 
-	if *pollingFreqSeconds <= 0 {
+	if *pollingIntervalSeconds <= 0 {
 		return Config{}, errors.New("polling frequency must be greater than zero")
 	}
 
-	pollingFreq := time.Duration(*pollingFreqSeconds) * time.Second
-	sendingFreq := time.Duration(*sendingFreqSeconds) * time.Second
+	pollingFreq := time.Duration(*pollingIntervalSeconds) * time.Second
+	sendingFreq := time.Duration(*sendingIntervalSeconds) * time.Second
 
 	return Config{
 		agent.Config{

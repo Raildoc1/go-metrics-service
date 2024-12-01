@@ -13,8 +13,8 @@ type Config struct {
 
 func Load() (Config, error) {
 	serverAddress := &common.ServerAddress{
-		Host: "localhost",
-		Port: 8080,
+		Host: commonConfig.DefaultServerHost,
+		Port: commonConfig.DefaultServerPort,
 	}
 
 	flag.Var(serverAddress, commonConfig.ServerAddressFlag, "Server address host:port")
