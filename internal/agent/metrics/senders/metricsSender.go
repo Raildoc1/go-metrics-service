@@ -14,8 +14,8 @@ import (
 
 type MetricsSender struct {
 	runtimeMetricsCollector *collectors.RuntimeMetricsCollector
-	started                 bool
 	host                    string
+	started                 bool
 }
 
 func NewMetricsSender(

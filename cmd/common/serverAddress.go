@@ -17,7 +17,8 @@ func (s *ServerAddress) String() string {
 
 func (s *ServerAddress) Set(flagValue string) error {
 	split := strings.Split(flagValue, ":")
-	if len(split) != 2 {
+	const serverAddressPartsCount = 2
+	if len(split) != serverAddressPartsCount {
 		return fmt.Errorf("invalid server address format: %s", flagValue)
 	}
 	s.Host = split[0]
