@@ -6,6 +6,7 @@ const (
 )
 
 const (
-	DefaultServerHost = "localhost"
-	DefaultServerPort = 8080
+	DefaultServerAddress = "localhost:8080"
+	DefaultServerHost    = "localhost"
+	DefaultServerPort    = 8080
 )
