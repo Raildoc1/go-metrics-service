@@ -17,6 +17,11 @@ func (m *MemStorage) Set(key string, value any) {
 	fmt.Println(key, ": ", value)
 }
 
+func (m *MemStorage) Has(key string) bool {
+	_, ok := m.data[key]
+	return ok
+}
+
 func (m *MemStorage) Get(key string) (any, bool) {
 	v, ok := m.data[key]
 	return v, ok

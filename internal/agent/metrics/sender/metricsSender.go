@@ -1,4 +1,4 @@
-package sending
+package sender
 
 import (
 	"log"
@@ -22,7 +22,7 @@ type MetricsSender struct {
 	requester Requester
 }
 
-func NewMetricsSender(
+func New(
 	metricsStorage MetricsStorage,
 	requester Requester,
 ) *MetricsSender {
@@ -70,7 +70,7 @@ func (ms *MetricsSender) Send() {
 
 	_ = ms.sendGauge("RandomValue", rand.Float64())
 
-	if err := ms.sendCounterDelta("PollCount", ms.storage.GetPollsCount()); err != nil {
+	if err := ms.sendCounterDelta("PollCount", ms.storage.GetPollsCount()); err == nil {
 		ms.storage.FlushPollsCount()
 	}
 }

@@ -2,9 +2,9 @@ package agent
 
 import (
 	"go-metrics-service/internal/agent/config"
-	"go-metrics-service/internal/agent/metrics/collecting"
-	"go-metrics-service/internal/agent/metrics/sending"
-	"go-metrics-service/internal/agent/requesting"
+	metricsCollector "go-metrics-service/internal/agent/metrics/collector"
+	metricsSender "go-metrics-service/internal/agent/metrics/sender"
+	metricsRequester "go-metrics-service/internal/agent/requester"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,16 +12,16 @@ import (
 )
 
 func Run(cfg config.Config) error {
-	collector := collecting.NewMetricsCollector()
-	requester := requesting.NewRequester(cfg.ServerAddress)
-	sender := sending.NewMetricsSender(collector, requester)
+	collector := metricsCollector.New()
+	requester := metricsRequester.New(cfg.ServerAddress)
+	sender := metricsSender.New(collector, requester)
 
 	lifecycle(cfg, collector, sender)
 
 	return nil
 }
 
-func lifecycle(cfg config.Config, collector *collecting.MetricsCollector, sender *sending.MetricsSender) {
+func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(
 		cancelChan,

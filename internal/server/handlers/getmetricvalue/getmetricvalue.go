@@ -1,31 +1,42 @@
-package handlers
+package getmetricvalue
 
 import (
 	"errors"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repositories"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
 
-type getMetricValueHTTPHandler struct {
-	counterRepository repositories.Repository[int64]
-	gaugeRepository   repositories.Repository[float64]
+type gaugeRepository interface {
+	Set(key string, value float64) error
+	Get(key string) (value float64, err error)
 }
 
-func NewGetMetricValueHTTPHandler(
-	counterRepository repositories.Repository[int64],
-	gaugeRepository repositories.Repository[float64],
+type counterRepository interface {
+	Set(key string, value int64) error
+	Get(key string) (value int64, err error)
+}
+
+type handler struct {
+	counterRepository counterRepository
+	gaugeRepository   gaugeRepository
+}
+
+func New(
+	counterRepository counterRepository,
+	gaugeRepository gaugeRepository,
 ) http.Handler {
-	return &getMetricValueHTTPHandler{
+	return &handler{
 		counterRepository: counterRepository,
 		gaugeRepository:   gaugeRepository,
 	}
 }
 
-func (h *getMetricValueHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, protocol.KeyParam)
 	if len(key) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -43,7 +54,7 @@ func (h *getMetricValueHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (h *getMetricValueHTTPHandler) handleGauge(key string, w http.ResponseWriter) {
+func (h *handler) handleGauge(key string, w http.ResponseWriter) {
 	value, err := h.gaugeRepository.Get(key)
 	if err != nil {
 		handleError(w, err)
@@ -52,7 +63,7 @@ func (h *getMetricValueHTTPHandler) handleGauge(key string, w http.ResponseWrite
 	}
 }
 
-func (h *getMetricValueHTTPHandler) handleCounter(key string, w http.ResponseWriter) {
+func (h *handler) handleCounter(key string, w http.ResponseWriter) {
 	value, err := h.counterRepository.Get(key)
 	if err != nil {
 		handleError(w, err)
@@ -66,8 +77,12 @@ func handleError(w http.ResponseWriter, err error) {
 	case errors.Is(err, repositories.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
 		return
-	default:
+	case errors.Is(err, repositories.ErrWrongType):
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	default:
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -76,6 +91,7 @@ func writeResponse(w http.ResponseWriter, value string) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, err := w.Write([]byte(value))
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

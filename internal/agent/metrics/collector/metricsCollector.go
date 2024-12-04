@@ -1,4 +1,4 @@
-package collecting
+package collector
 
 import (
 	"runtime"
@@ -9,7 +9,7 @@ type MetricsCollector struct {
 	pollsCount     int64
 }
 
-func NewMetricsCollector() *MetricsCollector {
+func New() *MetricsCollector {
 	return &MetricsCollector{
 		runtimeMetrics: runtime.MemStats{},
 		pollsCount:     0,

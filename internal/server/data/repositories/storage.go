@@ -13,6 +13,7 @@ var (
 
 type Storage interface {
 	Set(key string, value any)
+	Has(key string) bool
 	Get(key string) (any, bool)
 	GetAll() map[string]any
 }
