@@ -1,55 +1,34 @@
-package senders
+package sending
 
 import (
-	"errors"
 	"fmt"
-	"go-metrics-service/internal/agent/metrics/collectors"
+	"go-metrics-service/internal/agent/metrics/collecting"
 	"go-metrics-service/internal/common/protocol"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
-	"sync"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 )
 
 type MetricsSender struct {
-	runtimeMetricsCollector *collectors.RuntimeMetricsCollector
-	host                    string
-	startedMutex            sync.Mutex
-	started                 bool
+	metricsCollector *collecting.MetricsCollector
+	host             string
 }
 
 func NewMetricsSender(
-	runtimeMetricsCollector *collectors.RuntimeMetricsCollector,
+	runtimeMetricsCollector *collecting.MetricsCollector,
 	host string,
 ) *MetricsSender {
 	return &MetricsSender{
-		runtimeMetricsCollector: runtimeMetricsCollector,
-		host:                    host,
+		metricsCollector: runtimeMetricsCollector,
+		host:             host,
 	}
 }
 
-func (ms *MetricsSender) StartSendingMetrics(initialDelay, interval time.Duration) error {
-	ms.startedMutex.Lock()
-	defer ms.startedMutex.Unlock()
-	if ms.started {
-		return errors.New("metrics sender already started")
-	}
-	go func() {
-		time.Sleep(initialDelay)
-		for {
-			ms.sendMetrics()
-			time.Sleep(interval)
-		}
-	}()
-	ms.started = true
-	return nil
-}
-
-func (ms *MetricsSender) sendMetrics() {
-	runtimeMetrics := ms.runtimeMetricsCollector.GetMetrics()
+func (ms *MetricsSender) Send() {
+	runtimeMetrics := ms.metricsCollector.GetRuntimeMetrics()
 	runtimeMetricsMap := map[string]float64{
 		"Alloc":         float64(runtimeMetrics.Alloc),
 		"BuckHashSys":   float64(runtimeMetrics.BuckHashSys),
@@ -84,8 +63,18 @@ func (ms *MetricsSender) sendMetrics() {
 		ms.sendGaugeWithErrorHandling(key, value)
 	}
 
-	ms.sendCounterDeltaWithErrorHandling("PollCount", 1)
 	ms.sendGaugeWithErrorHandling("RandomValue", rand.Float64())
+	ms.sendPollCount()
+}
+
+func (ms *MetricsSender) sendPollCount() {
+	const metricName = "PollCount"
+	pollsCountDelta := ms.metricsCollector.GetPollsCount()
+	resp, err := ms.sendUpdate(protocol.Counter, metricName, strconv.Itoa(pollsCountDelta))
+	if err == nil {
+		ms.metricsCollector.FlushPollsCount()
+	}
+	handleResponse(metricName, resp, err)
 }
 
 func (ms *MetricsSender) sendCounterDeltaWithErrorHandling(metricName string, delta int64) {
@@ -100,9 +89,9 @@ func (ms *MetricsSender) sendGaugeWithErrorHandling(metricName string, value flo
 
 func handleResponse(metricName string, resp *resty.Response, err error) {
 	if err != nil {
-		fmt.Printf("%s: %s\n", metricName, err.Error())
+		log.Printf("%s: %s\n", metricName, err.Error())
 	} else if resp.StatusCode() != http.StatusOK {
-		fmt.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode()))
+		log.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode()))
 	}
 }
 

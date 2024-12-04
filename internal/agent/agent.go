@@ -2,20 +2,49 @@ package agent
 
 import (
 	"go-metrics-service/internal/agent/config"
-	"go-metrics-service/internal/agent/metrics/collectors"
-	"go-metrics-service/internal/agent/metrics/senders"
+	"go-metrics-service/internal/agent/metrics/collecting"
+	"go-metrics-service/internal/agent/metrics/sending"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func Run(cfg config.Config) error {
-	mc := collectors.NewRuntimeMetricsCollector()
-	ms := senders.NewMetricsSender(mc, cfg.ServerAddress)
-	err := mc.StartPolling(cfg.PollingFreq)
-	if err != nil {
-		return err
+	collector := collecting.NewMetricsCollector()
+	sender := sending.NewMetricsSender(collector, cfg.ServerAddress)
+
+	lifecycle(cfg, collector, sender)
+
+	return nil
+}
+
+func lifecycle(cfg config.Config, collector *collecting.MetricsCollector, sender *sending.MetricsSender) {
+	cancelChan := make(chan os.Signal, 1)
+	signal.Notify(
+		cancelChan,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		syscall.SIGABRT,
+		syscall.SIGKILL,
+	)
+
+	pollTicker := time.NewTicker(cfg.PollingInterval)
+	defer pollTicker.Stop()
+
+	sendingTicker := time.NewTicker(cfg.SendingInterval)
+	defer sendingTicker.Stop()
+
+	for {
+		select {
+		case <-cancelChan:
+			return
+		case <-pollTicker.C:
+			collector.Poll()
+		case <-sendingTicker.C:
+			sender.Send()
+		}
 	}
-	err = ms.StartSendingMetrics(cfg.PollingFreq, cfg.SendingFreq)
-	if err != nil {
-		return err
-	}
-	select {}
 }

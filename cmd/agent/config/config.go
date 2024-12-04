@@ -89,9 +89,9 @@ func Load() (Config, error) {
 
 	return Config{
 		agent.Config{
-			ServerAddress: *serverAddress,
-			SendingFreq:   sendingFreq,
-			PollingFreq:   pollingFreq,
+			ServerAddress:   *serverAddress,
+			SendingInterval: sendingFreq,
+			PollingInterval: pollingFreq,
 		},
 	}, nil
 }
