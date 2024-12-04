@@ -11,5 +11,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	agent.Run(cfg.Agent)
+	err = agent.Run(cfg.Agent)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -1,12 +1,14 @@
 package senders
 
 import (
+	"errors"
 	"fmt"
 	"go-metrics-service/internal/agent/metrics/collectors"
 	"go-metrics-service/internal/common/protocol"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -15,6 +17,7 @@ import (
 type MetricsSender struct {
 	runtimeMetricsCollector *collectors.RuntimeMetricsCollector
 	host                    string
+	startedMutex            sync.Mutex
 	started                 bool
 }
 
@@ -28,9 +31,11 @@ func NewMetricsSender(
 	}
 }
 
-func (ms *MetricsSender) StartSendingMetrics(initialDelay, interval time.Duration) {
+func (ms *MetricsSender) StartSendingMetrics(initialDelay, interval time.Duration) error {
+	ms.startedMutex.Lock()
+	defer ms.startedMutex.Unlock()
 	if ms.started {
-		panic("already started")
+		return errors.New("metrics sender already started")
 	}
 	go func() {
 		time.Sleep(initialDelay)
@@ -40,6 +45,7 @@ func (ms *MetricsSender) StartSendingMetrics(initialDelay, interval time.Duratio
 		}
 	}()
 	ms.started = true
+	return nil
 }
 
 func (ms *MetricsSender) sendMetrics() {
