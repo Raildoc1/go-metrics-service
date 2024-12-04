@@ -1,34 +1,39 @@
 package sending
 
 import (
-	"fmt"
-	"go-metrics-service/internal/agent/metrics/collecting"
-	"go-metrics-service/internal/common/protocol"
 	"log"
 	"math/rand"
-	"net/http"
-	"strconv"
-
-	"github.com/go-resty/resty/v2"
+	"runtime"
 )
 
+type Requester interface {
+	SendCounterDelta(metricName string, delta int64) error
+	SendGauge(metricName string, value float64) error
+}
+
+type MetricsStorage interface {
+	GetRuntimeMetrics() runtime.MemStats
+	GetPollsCount() int64
+	FlushPollsCount()
+}
+
 type MetricsSender struct {
-	metricsCollector *collecting.MetricsCollector
-	host             string
+	storage   MetricsStorage
+	requester Requester
 }
 
 func NewMetricsSender(
-	runtimeMetricsCollector *collecting.MetricsCollector,
-	host string,
+	metricsStorage MetricsStorage,
+	requester Requester,
 ) *MetricsSender {
 	return &MetricsSender{
-		metricsCollector: runtimeMetricsCollector,
-		host:             host,
+		storage:   metricsStorage,
+		requester: requester,
 	}
 }
 
 func (ms *MetricsSender) Send() {
-	runtimeMetrics := ms.metricsCollector.GetRuntimeMetrics()
+	runtimeMetrics := ms.storage.GetRuntimeMetrics()
 	runtimeMetricsMap := map[string]float64{
 		"Alloc":         float64(runtimeMetrics.Alloc),
 		"BuckHashSys":   float64(runtimeMetrics.BuckHashSys),
@@ -60,57 +65,28 @@ func (ms *MetricsSender) Send() {
 	}
 
 	for key, value := range runtimeMetricsMap {
-		ms.sendGaugeWithErrorHandling(key, value)
+		_ = ms.sendGauge(key, value)
 	}
 
-	ms.sendGaugeWithErrorHandling("RandomValue", rand.Float64())
-	ms.sendPollCount()
-}
+	_ = ms.sendGauge("RandomValue", rand.Float64())
 
-func (ms *MetricsSender) sendPollCount() {
-	const metricName = "PollCount"
-	pollsCountDelta := ms.metricsCollector.GetPollsCount()
-	resp, err := ms.sendUpdate(protocol.Counter, metricName, strconv.Itoa(pollsCountDelta))
-	if err == nil {
-		ms.metricsCollector.FlushPollsCount()
+	if err := ms.sendCounterDelta("PollCount", ms.storage.GetPollsCount()); err != nil {
+		ms.storage.FlushPollsCount()
 	}
-	handleResponse(metricName, resp, err)
 }
 
-func (ms *MetricsSender) sendCounterDeltaWithErrorHandling(metricName string, delta int64) {
-	resp, err := ms.sendUpdate(protocol.Counter, metricName, strconv.FormatInt(delta, 10))
-	handleResponse(metricName, resp, err)
-}
-
-func (ms *MetricsSender) sendGaugeWithErrorHandling(metricName string, value float64) {
-	resp, err := ms.sendUpdate(protocol.Gauge, metricName, strconv.FormatFloat(value, 'f', -1, 64))
-	handleResponse(metricName, resp, err)
-}
-
-func handleResponse(metricName string, resp *resty.Response, err error) {
+func (ms *MetricsSender) sendGauge(key string, value float64) error {
+	err := ms.requester.SendGauge(key, value)
 	if err != nil {
-		log.Printf("%s: %s\n", metricName, err.Error())
-	} else if resp.StatusCode() != http.StatusOK {
-		log.Printf("%s: status %s\n", metricName, strconv.Itoa(resp.StatusCode()))
+		log.Printf("Error sending gauge '%s': %v", key, err)
 	}
+	return err
 }
 
-func (ms *MetricsSender) sendUpdate(metricType string, metricKey string, metricValue string) (*resty.Response, error) {
-	url := "http://" + ms.host + protocol.UpdateMetricValueURL
-
-	resp, err := resty.New().
-		SetPathParams(
-			map[string]string{
-				protocol.TypeParam:  metricType,
-				protocol.KeyParam:   metricKey,
-				protocol.ValueParam: metricValue,
-			}).
-		R().
-		Post(url)
-
+func (ms *MetricsSender) sendCounterDelta(key string, value int64) error {
+	err := ms.requester.SendCounterDelta(key, value)
 	if err != nil {
-		return nil, fmt.Errorf("%w: update failed", err)
+		log.Printf("Error sending counter '%s': %v", key, err)
 	}
-
-	return resp, nil
+	return err
 }

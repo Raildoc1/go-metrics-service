@@ -4,6 +4,7 @@ import (
 	"go-metrics-service/internal/agent/config"
 	"go-metrics-service/internal/agent/metrics/collecting"
 	"go-metrics-service/internal/agent/metrics/sending"
+	"go-metrics-service/internal/agent/requesting"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +13,8 @@ import (
 
 func Run(cfg config.Config) error {
 	collector := collecting.NewMetricsCollector()
-	sender := sending.NewMetricsSender(collector, cfg.ServerAddress)
+	requester := requesting.NewRequester(cfg.ServerAddress)
+	sender := sending.NewMetricsSender(collector, requester)
 
 	lifecycle(cfg, collector, sender)
 

@@ -6,7 +6,7 @@ import (
 
 type MetricsCollector struct {
 	runtimeMetrics runtime.MemStats
-	pollsCount     int
+	pollsCount     int64
 }
 
 func NewMetricsCollector() *MetricsCollector {
@@ -25,7 +25,7 @@ func (mc *MetricsCollector) GetRuntimeMetrics() runtime.MemStats {
 	return mc.runtimeMetrics
 }
 
-func (mc *MetricsCollector) GetPollsCount() int {
+func (mc *MetricsCollector) GetPollsCount() int64 {
 	return mc.pollsCount
 }
 
