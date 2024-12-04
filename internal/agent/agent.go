@@ -30,7 +30,6 @@ func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, 
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 		syscall.SIGABRT,
-		syscall.SIGKILL,
 	)
 
 	pollTicker := time.NewTicker(cfg.PollingInterval)

@@ -23,21 +23,20 @@ func New(
 }
 
 func (c *Counter) Change(key string, delta int64) error {
-	prevValue, err := c.get(key)
-	if err != nil {
-		return fmt.Errorf("%w: getting counter '%s' failed", err, key)
+	var prevValue int64
+	if !c.repository.Has(key) {
+		prevValue = int64(0)
+	} else {
+		var err error
+		prevValue, err = c.repository.Get(key)
+		if err != nil {
+			return fmt.Errorf("%w: getting counter '%s' failed", err, key)
+		}
 	}
 	newValue := prevValue + delta
-	err = c.repository.Set(key, newValue)
+	err := c.repository.Set(key, newValue)
 	if err != nil {
 		return fmt.Errorf("%w: setting counter '%s' failed", err, key)
 	}
 	return nil
-}
-
-func (c *Counter) get(key string) (value int64, err error) {
-	if !c.repository.Has(key) {
-		return int64(0), nil
-	}
-	return c.repository.Get(key)
 }

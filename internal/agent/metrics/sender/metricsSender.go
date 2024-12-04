@@ -65,28 +65,27 @@ func (ms *MetricsSender) Send() {
 	}
 
 	for key, value := range runtimeMetricsMap {
-		_ = ms.sendGauge(key, value)
+		ms.trySendGauge(key, value)
 	}
 
-	_ = ms.sendGauge("RandomValue", rand.Float64())
+	ms.trySendGauge("RandomValue", rand.Float64())
 
-	if err := ms.sendCounterDelta("PollCount", ms.storage.GetPollsCount()); err == nil {
+	if ok := ms.trySendCounterDelta("PollCount", ms.storage.GetPollsCount()); ok {
 		ms.storage.FlushPollsCount()
 	}
 }
 
-func (ms *MetricsSender) sendGauge(key string, value float64) error {
+func (ms *MetricsSender) trySendGauge(key string, value float64) {
 	err := ms.requester.SendGauge(key, value)
 	if err != nil {
 		log.Printf("Error sending gauge '%s': %v", key, err)
 	}
-	return err
 }
 
-func (ms *MetricsSender) sendCounterDelta(key string, value int64) error {
+func (ms *MetricsSender) trySendCounterDelta(key string, value int64) bool {
 	err := ms.requester.SendCounterDelta(key, value)
 	if err != nil {
 		log.Printf("Error sending counter '%s': %v", key, err)
 	}
-	return err
+	return err == nil
 }

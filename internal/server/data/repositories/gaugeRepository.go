@@ -10,12 +10,12 @@ func NewGaugeRepository(storage Storage) *GaugeRepository {
 	}
 }
 
-func (gr GaugeRepository) Set(key string, value float64) error {
-	return set[float64](gr.storage, key, value)
+func (gr GaugeRepository) Has(key string) bool {
+	return gr.storage.Has(key)
 }
 
-func (gr GaugeRepository) Has(key string) bool {
-	return gr.Has(key)
+func (gr GaugeRepository) Set(key string, value float64) error {
+	return set[float64](gr.storage, key, value)
 }
 
 func (gr GaugeRepository) Get(key string) (value float64, err error) {
