@@ -1,14 +1,9 @@
-package repositories
+package repository
 
 import (
-	"errors"
 	"fmt"
+	"go-metrics-service/internal/server/data/customerrors"
 	"reflect"
-)
-
-var (
-	ErrWrongType = errors.New("wrong type")
-	ErrNotFound  = errors.New("not found")
 )
 
 type Storage interface {
@@ -16,6 +11,36 @@ type Storage interface {
 	Has(key string) bool
 	Get(key string) (any, bool)
 	GetAll() map[string]any
+}
+
+type Repository struct {
+	storage Storage
+}
+
+func New(storage Storage) *Repository {
+	return &Repository{
+		storage: storage,
+	}
+}
+
+func (r *Repository) Has(key string) bool {
+	return r.storage.Has(key)
+}
+
+func (r *Repository) SetInt64(key string, value int64) error {
+	return set[int64](r.storage, key, value)
+}
+
+func (r *Repository) GetInt64(key string) (int64, error) {
+	return get[int64](r.storage, key)
+}
+
+func (r *Repository) SetFloat64(key string, value float64) error {
+	return set[float64](r.storage, key, value)
+}
+
+func (r *Repository) GetFloat64(key string) (float64, error) {
+	return get[float64](r.storage, key)
 }
 
 func set[T any](s Storage, key string, value T) error {
@@ -46,7 +71,7 @@ func get[T any](s Storage, key string) (T, error) {
 func createNotFoundError(key string) error {
 	return fmt.Errorf(
 		"%w: '%s' not found",
-		ErrNotFound,
+		customerrors.ErrNotFound,
 		key,
 	)
 }
@@ -54,7 +79,7 @@ func createNotFoundError(key string) error {
 func createWrongTypeError(requested, actual reflect.Type) error {
 	return fmt.Errorf(
 		"%w: expected type %s but data contains %s",
-		ErrWrongType,
+		customerrors.ErrWrongType,
 		requested,
 		actual,
 	)

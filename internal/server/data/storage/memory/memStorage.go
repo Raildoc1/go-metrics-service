@@ -1,6 +1,8 @@
 package memory
 
-import "fmt"
+import (
+	"log"
+)
 
 type MemStorage struct {
 	data map[string]any
@@ -14,7 +16,7 @@ func NewMemStorage() *MemStorage {
 
 func (m *MemStorage) Set(key string, value any) {
 	m.data[key] = value
-	fmt.Println(key, ": ", value)
+	log.Println(key, ": ", value)
 }
 
 func (m *MemStorage) Has(key string) bool {

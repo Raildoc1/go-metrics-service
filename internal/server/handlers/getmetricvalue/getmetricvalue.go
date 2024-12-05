@@ -3,7 +3,7 @@ package getmetricvalue
 import (
 	"errors"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/repositories"
+	"go-metrics-service/internal/server/data/customerrors"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,28 +11,20 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type gaugeRepository interface {
-	Set(key string, value float64) error
-	Get(key string) (value float64, err error)
-}
-
-type counterRepository interface {
-	Set(key string, value int64) error
-	Get(key string) (value int64, err error)
+type repository interface {
+	SetFloat64(key string, value float64) error
+	GetFloat64(key string) (value float64, err error)
+	SetInt64(key string, value int64) error
+	GetInt64(key string) (value int64, err error)
 }
 
 type handler struct {
-	counterRepository counterRepository
-	gaugeRepository   gaugeRepository
+	repository repository
 }
 
-func New(
-	counterRepository counterRepository,
-	gaugeRepository gaugeRepository,
-) http.Handler {
+func New(repository repository) http.Handler {
 	return &handler{
-		counterRepository: counterRepository,
-		gaugeRepository:   gaugeRepository,
+		repository: repository,
 	}
 }
 
@@ -55,7 +47,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) handleGauge(key string, w http.ResponseWriter) {
-	value, err := h.gaugeRepository.Get(key)
+	value, err := h.repository.GetFloat64(key)
 	if err != nil {
 		handleError(w, err)
 	} else {
@@ -64,7 +56,7 @@ func (h *handler) handleGauge(key string, w http.ResponseWriter) {
 }
 
 func (h *handler) handleCounter(key string, w http.ResponseWriter) {
-	value, err := h.counterRepository.Get(key)
+	value, err := h.repository.GetInt64(key)
 	if err != nil {
 		handleError(w, err)
 	} else {
@@ -74,10 +66,10 @@ func (h *handler) handleCounter(key string, w http.ResponseWriter) {
 
 func handleError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, repositories.ErrNotFound):
+	case errors.Is(err, customerrors.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
 		return
-	case errors.Is(err, repositories.ErrWrongType):
+	case errors.Is(err, customerrors.ErrWrongType):
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	default:
