@@ -2,7 +2,7 @@ package repository
 
 import (
 	"fmt"
-	"go-metrics-service/internal/server/data/customerrors"
+	"go-metrics-service/internal/server/data"
 	"reflect"
 )
 
@@ -71,7 +71,7 @@ func get[T any](s Storage, key string) (T, error) {
 func createNotFoundError(key string) error {
 	return fmt.Errorf(
 		"%w: '%s' not found",
-		customerrors.ErrNotFound,
+		data.ErrNotFound,
 		key,
 	)
 }
@@ -79,7 +79,7 @@ func createNotFoundError(key string) error {
 func createWrongTypeError(requested, actual reflect.Type) error {
 	return fmt.Errorf(
 		"%w: expected type %s but data contains %s",
-		customerrors.ErrWrongType,
+		data.ErrWrongType,
 		requested,
 		actual,
 	)

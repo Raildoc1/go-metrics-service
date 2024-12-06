@@ -13,9 +13,7 @@ type Requester struct {
 	host string
 }
 
-func New(
-	host string,
-) *Requester {
+func New(host string) *Requester {
 	return &Requester{
 		host: host,
 	}

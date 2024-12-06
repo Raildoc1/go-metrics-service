@@ -6,25 +6,25 @@ import (
 	"runtime"
 )
 
-type Requester interface {
+type requester interface {
 	SendCounterDelta(metricName string, delta int64) error
 	SendGauge(metricName string, value float64) error
 }
 
-type MetricsStorage interface {
+type metricsStorage interface {
 	GetRuntimeMetrics() runtime.MemStats
 	GetPollsCount() int64
 	FlushPollsCount()
 }
 
 type MetricsSender struct {
-	storage   MetricsStorage
-	requester Requester
+	storage   metricsStorage
+	requester requester
 }
 
 func New(
-	metricsStorage MetricsStorage,
-	requester Requester,
+	metricsStorage metricsStorage,
+	requester requester,
 ) *MetricsSender {
 	return &MetricsSender{
 		storage:   metricsStorage,
@@ -32,7 +32,7 @@ func New(
 	}
 }
 
-func (ms *MetricsSender) Send() {
+func (ms *MetricsSender) TrySendRuntimeMetrics() {
 	runtimeMetrics := ms.storage.GetRuntimeMetrics()
 	runtimeMetricsMap := map[string]float64{
 		"Alloc":         float64(runtimeMetrics.Alloc),
@@ -67,12 +67,14 @@ func (ms *MetricsSender) Send() {
 	for key, value := range runtimeMetricsMap {
 		ms.trySendGauge(key, value)
 	}
+}
 
+func (ms *MetricsSender) TrySendRandomValue() {
 	ms.trySendGauge("RandomValue", rand.Float64())
+}
 
-	if ok := ms.trySendCounterDelta("PollCount", ms.storage.GetPollsCount()); ok {
-		ms.storage.FlushPollsCount()
-	}
+func (ms *MetricsSender) TrySendPollCount() bool {
+	return ms.trySendCounterDelta("PollCount", ms.storage.GetPollsCount())
 }
 
 func (ms *MetricsSender) trySendGauge(key string, value float64) {

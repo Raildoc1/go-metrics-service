@@ -45,7 +45,15 @@ func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, 
 		case <-pollTicker.C:
 			collector.Poll()
 		case <-sendingTicker.C:
-			sender.Send()
+			send(collector, sender)
 		}
+	}
+}
+
+func send(collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {
+	sender.TrySendRuntimeMetrics()
+	sender.TrySendRandomValue()
+	if ok := sender.TrySendPollCount(); ok {
+		collector.FlushPollsCount()
 	}
 }

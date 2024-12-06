@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"go-metrics-service/internal/server/data/customerrors"
+	"go-metrics-service/internal/server/data"
 	"go-metrics-service/internal/server/data/storage/memory"
 	"testing"
 
@@ -17,9 +17,9 @@ func TestKeysCollision(t *testing.T) {
 
 	_, err := rep.GetFloat64("test_counter")
 	require.Error(t, err)
-	require.ErrorIs(t, err, customerrors.ErrWrongType)
+	require.ErrorIs(t, err, data.ErrWrongType)
 
 	err = rep.SetFloat64("test_counter", 3.5)
 	require.Error(t, err)
-	require.ErrorIs(t, err, customerrors.ErrWrongType)
+	require.ErrorIs(t, err, data.ErrWrongType)
 }

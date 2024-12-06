@@ -3,7 +3,7 @@ package getmetricvalue
 import (
 	"errors"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/customerrors"
+	"go-metrics-service/internal/server/data"
 	"log"
 	"net/http"
 	"strconv"
@@ -66,10 +66,10 @@ func (h *handler) handleCounter(key string, w http.ResponseWriter) {
 
 func handleError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, customerrors.ErrNotFound):
+	case errors.Is(err, data.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
 		return
-	case errors.Is(err, customerrors.ErrWrongType):
+	case errors.Is(err, data.ErrWrongType):
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	default:

@@ -1,4 +1,4 @@
-package customerrors
+package data
 
 import "errors"
 
