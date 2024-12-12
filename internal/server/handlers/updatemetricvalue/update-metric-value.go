@@ -2,7 +2,7 @@ package updatemetricvalue
 
 import (
 	"go-metrics-service/internal/common/protocol"
-	"log"
+	"go-metrics-service/internal/server/logger"
 	"net/http"
 	"strconv"
 
@@ -58,10 +58,11 @@ func (h *handler) handleGauge(key string, w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.gaugeLogic.Set(key, value); err != nil {
-		log.Println(err)
+		logger.Log.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *handler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
@@ -72,8 +73,9 @@ func (h *handler) handleCounter(key string, w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if err := h.counterLogic.Change(key, delta); err != nil {
-		log.Println(err)
+		logger.Log.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }

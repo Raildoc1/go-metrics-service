@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"log"
+	"go-metrics-service/internal/server/logger"
 )
 
 type MemStorage struct {
@@ -16,7 +16,7 @@ func NewMemStorage() *MemStorage {
 
 func (m *MemStorage) Set(key string, value any) {
 	m.data[key] = value
-	log.Println(key, ": ", value)
+	logger.Log.Info(key, ": ", value)
 }
 
 func (m *MemStorage) Has(key string) bool {

@@ -3,8 +3,8 @@ package getallmetrics
 import (
 	"bytes"
 	"fmt"
+	"go-metrics-service/internal/server/logger"
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -30,14 +30,15 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := template.New("data").Parse(`{{ .}}`)
 	if err != nil {
-		log.Println(err)
+		logger.Log.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = tmpl.Execute(w, buffer.String())
 	if err != nil {
-		log.Println(err)
+		logger.Log.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }

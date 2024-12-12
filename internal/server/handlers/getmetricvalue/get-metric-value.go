@@ -4,7 +4,7 @@ import (
 	"errors"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data"
-	"log"
+	"go-metrics-service/internal/server/logger"
 	"net/http"
 	"strconv"
 
@@ -73,7 +73,7 @@ func handleError(w http.ResponseWriter, err error) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	default:
-		log.Println(err)
+		logger.Log.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -83,8 +83,9 @@ func writeResponse(w http.ResponseWriter, value string) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, err := w.Write([]byte(value))
 	if err != nil {
-		log.Println(err)
+		logger.Log.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }

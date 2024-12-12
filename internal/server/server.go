@@ -8,6 +8,7 @@ import (
 	"go-metrics-service/internal/server/handlers/updatemetricvalue"
 	"go-metrics-service/internal/server/logic/counter"
 	"go-metrics-service/internal/server/logic/gauge"
+	"go-metrics-service/internal/server/middleware"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -19,13 +20,9 @@ func NewServer(storage repository.Storage) http.Handler {
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
 
-	updateMetricValueHTTPHandler := updatemetricvalue.New(
-		counterLogic,
-		gaugeLogic,
-	)
-
-	getMetricValueHTTPHandler := getmetricvalue.New(rep)
-	getAllMetricsHTTPHandler := getallmetrics.New(storage)
+	updateMetricValueHTTPHandler := middleware.WithLogger(updatemetricvalue.New(counterLogic, gaugeLogic))
+	getMetricValueHTTPHandler := middleware.WithLogger(getmetricvalue.New(rep))
+	getAllMetricsHTTPHandler := middleware.WithLogger(getallmetrics.New(storage))
 
 	router := chi.NewRouter()
 
