@@ -1,19 +1,22 @@
 package middleware
 
 import (
-	"go-metrics-service/internal/server/logger"
 	"net/http"
 	"time"
 )
 
-func WithLogger(inner http.Handler) http.Handler {
+type InfoLogger interface {
+	Infoln(args ...interface{})
+}
+
+func WithLogger(inner http.Handler, logger InfoLogger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		lrw := loggingResponseWriter{
 			inner: w,
 		}
 		inner.ServeHTTP(&lrw, r)
-		logger.Log.Infoln(
+		logger.Infoln(
 			"method", r.Method,
 			"url", r.URL.String(),
 			"duration", time.Since(start),
@@ -33,6 +36,7 @@ func (w *loggingResponseWriter) Header() http.Header {
 	return w.inner.Header()
 }
 
+// nolint:wrapcheck
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := w.inner.Write(b)
 	w.size += size

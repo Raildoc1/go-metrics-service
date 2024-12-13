@@ -14,15 +14,22 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewServer(storage repository.Storage) http.Handler {
+type Logger interface {
+	middleware.InfoLogger
+	getallmetrics.Logger
+	getmetricvalue.Logger
+	updatemetricvalue.Logger
+}
+
+func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	rep := repository.New(storage)
 
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
 
-	updateMetricValueHTTPHandler := middleware.WithLogger(updatemetricvalue.New(counterLogic, gaugeLogic))
-	getMetricValueHTTPHandler := middleware.WithLogger(getmetricvalue.New(rep))
-	getAllMetricsHTTPHandler := middleware.WithLogger(getallmetrics.New(storage))
+	updateMetricValueHTTPHandler := middleware.WithLogger(updatemetricvalue.New(counterLogic, gaugeLogic, logger), logger)
+	getMetricValueHTTPHandler := middleware.WithLogger(getmetricvalue.New(rep, logger), logger)
+	getAllMetricsHTTPHandler := middleware.WithLogger(getallmetrics.New(storage, logger), logger)
 
 	router := chi.NewRouter()
 

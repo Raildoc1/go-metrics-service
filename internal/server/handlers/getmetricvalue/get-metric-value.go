@@ -4,27 +4,32 @@ import (
 	"errors"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data"
-	"go-metrics-service/internal/server/logger"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
 
-type repository interface {
+type Repository interface {
 	SetFloat64(key string, value float64) error
 	GetFloat64(key string) (value float64, err error)
 	SetInt64(key string, value int64) error
 	GetInt64(key string) (value int64, err error)
 }
 
-type handler struct {
-	repository repository
+type Logger interface {
+	Error(args ...interface{})
 }
 
-func New(repository repository) http.Handler {
+type handler struct {
+	repository Repository
+	logger     Logger
+}
+
+func New(repository Repository, logger Logger) http.Handler {
 	return &handler{
 		repository: repository,
+		logger:     logger,
 	}
 }
 
@@ -49,22 +54,22 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *handler) handleGauge(key string, w http.ResponseWriter) {
 	value, err := h.repository.GetFloat64(key)
 	if err != nil {
-		handleError(w, err)
+		h.handleError(w, err)
 	} else {
-		writeResponse(w, strconv.FormatFloat(value, 'f', -1, 64))
+		h.writeResponse(w, strconv.FormatFloat(value, 'f', -1, 64))
 	}
 }
 
 func (h *handler) handleCounter(key string, w http.ResponseWriter) {
 	value, err := h.repository.GetInt64(key)
 	if err != nil {
-		handleError(w, err)
+		h.handleError(w, err)
 	} else {
-		writeResponse(w, strconv.FormatInt(value, 10))
+		h.writeResponse(w, strconv.FormatInt(value, 10))
 	}
 }
 
-func handleError(w http.ResponseWriter, err error) {
+func (h *handler) handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, data.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
@@ -73,17 +78,17 @@ func handleError(w http.ResponseWriter, err error) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	default:
-		logger.Log.Error(err)
+		h.logger.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
 
-func writeResponse(w http.ResponseWriter, value string) {
+func (h *handler) writeResponse(w http.ResponseWriter, value string) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, err := w.Write([]byte(value))
 	if err != nil {
-		logger.Log.Error(err)
+		h.logger.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

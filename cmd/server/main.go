@@ -4,7 +4,7 @@ import (
 	"go-metrics-service/cmd/server/config"
 	"go-metrics-service/internal/server"
 	"go-metrics-service/internal/server/data/storage/memory"
-	"go-metrics-service/internal/server/logger"
+	"go-metrics-service/internal/server/logging"
 	"log"
 	"net/http"
 )
@@ -15,16 +15,13 @@ func main() {
 		log.Fatal(err)
 	}
 	memStorage := memory.NewMemStorage()
-	err = logger.CreateLogger(cfg.Development)
+	logger, err := logging.CreateLogger(cfg.Development)
 	if err != nil {
 		log.Fatal(err)
 	}
-	handler := server.NewServer(memStorage)
+	defer logger.Sync()
+	handler := server.NewServer(memStorage, logger)
 	err = http.ListenAndServe(cfg.ServerAddress, handler)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = logger.Sync()
 	if err != nil {
 		log.Fatal(err)
 	}
