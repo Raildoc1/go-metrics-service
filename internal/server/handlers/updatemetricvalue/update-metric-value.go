@@ -2,33 +2,39 @@ package updatemetricvalue
 
 import (
 	"go-metrics-service/internal/common/protocol"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
 
-type counterLogic interface {
+type CounterLogic interface {
 	Change(key string, delta int64) error
 }
 
-type gaugeLogic interface {
+type GaugeLogic interface {
 	Set(key string, value float64) error
 }
 
+type Logger interface {
+	Error(args ...interface{})
+}
+
 type handler struct {
-	counterLogic counterLogic
-	gaugeLogic   gaugeLogic
+	counterLogic CounterLogic
+	gaugeLogic   GaugeLogic
+	logger       Logger
 }
 
 func New(
-	counterLogic counterLogic,
-	gaugeLogic gaugeLogic,
+	counterLogic CounterLogic,
+	gaugeLogic GaugeLogic,
+	logger Logger,
 ) http.Handler {
 	return &handler{
 		counterLogic: counterLogic,
 		gaugeLogic:   gaugeLogic,
+		logger:       logger,
 	}
 }
 
@@ -58,10 +64,11 @@ func (h *handler) handleGauge(key string, w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.gaugeLogic.Set(key, value); err != nil {
-		log.Println(err)
+		h.logger.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *handler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
@@ -72,8 +79,9 @@ func (h *handler) handleCounter(key string, w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if err := h.counterLogic.Change(key, delta); err != nil {
-		log.Println(err)
+		h.logger.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }

@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	ServerAddress string
+	Development   bool
 }
 
 func Load() (Config, error) {

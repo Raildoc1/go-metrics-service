@@ -7,14 +7,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-resty/resty/v2"
 )
 
 func setupServer() *httptest.Server {
 	memStorage := memory.NewMemStorage()
-	handler := NewServer(memStorage)
+	handler := NewServer(memStorage, zap.NewNop().Sugar())
 	return httptest.NewServer(handler)
 }
 
@@ -122,28 +125,30 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		request := resty.
-			New().
-			SetPathParams(test.pathParams).
-			R()
+		t.Run(test.name, func(t *testing.T) {
+			request := resty.
+				New().
+				SetPathParams(test.pathParams).
+				R()
 
-		url := server.URL + test.restPath
+			url := server.URL + test.restPath
 
-		var resp *resty.Response
-		var err error
+			var resp *resty.Response
+			var err error
 
-		switch test.method {
-		case "GET":
-			resp, err = request.Get(url)
-		case "POST":
-			resp, err = request.Post(url)
-		default:
-			require.Fail(t, "Forbidden method")
-		}
+			switch test.method {
+			case "GET":
+				resp, err = request.Get(url)
+			case "POST":
+				resp, err = request.Post(url)
+			default:
+				require.Fail(t, "Forbidden method")
+			}
 
-		assert.NoError(t, err, "error making HTTP request")
-		assert.Equal(t, test.want.code, resp.StatusCode(), "Unexpected status code")
-		require.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"), "Unexpected content type")
-		assert.Equal(t, test.want.response, string(resp.Body()), "Unexpected response")
+			assert.NoError(t, err, "error making HTTP request")
+			assert.Equal(t, test.want.code, resp.StatusCode(), "Unexpected status code")
+			require.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"), "Unexpected content type")
+			assert.Equal(t, test.want.response, string(resp.Body()), "Unexpected response")
+		})
 	}
 }
