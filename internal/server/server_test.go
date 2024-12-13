@@ -3,10 +3,11 @@ package server
 import (
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/storage/memory"
-	"go-metrics-service/internal/server/logging"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,12 +17,7 @@ import (
 
 func setupServer() (*httptest.Server, error) {
 	memStorage := memory.NewMemStorage()
-	logger, err := logging.CreateLogger(true)
-	if err != nil {
-		return nil, err
-	}
-	defer logger.Sync()
-	handler := NewServer(memStorage, logger)
+	handler := NewServer(memStorage, zap.NewNop().Sugar())
 	return httptest.NewServer(handler), nil
 }
 

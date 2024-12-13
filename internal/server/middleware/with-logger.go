@@ -36,7 +36,7 @@ func (w *loggingResponseWriter) Header() http.Header {
 	return w.inner.Header()
 }
 
-// nolint:wrapcheck
+//nolint:wrapcheck // logging middleware must not change inner error
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := w.inner.Write(b)
 	w.size += size

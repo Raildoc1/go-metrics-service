@@ -7,6 +7,8 @@ import (
 	"go-metrics-service/internal/server/logging"
 	"log"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -19,10 +21,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer logger.Sync()
+	defer func(logger *zap.SugaredLogger) {
+		err := logger.Sync()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(logger)
 	handler := server.NewServer(memStorage, logger)
 	err = http.ListenAndServe(cfg.ServerAddress, handler)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(err)
+		return
 	}
 }
