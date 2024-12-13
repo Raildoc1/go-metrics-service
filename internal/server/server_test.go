@@ -15,18 +15,14 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func setupServer() (*httptest.Server, error) {
+func setupServer() *httptest.Server {
 	memStorage := memory.NewMemStorage()
 	handler := NewServer(memStorage, zap.NewNop().Sugar())
-	return httptest.NewServer(handler), nil
+	return httptest.NewServer(handler)
 }
 
 func TestUpdate(t *testing.T) {
-	server, err := setupServer()
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
+	server := setupServer()
 	defer server.Close()
 
 	type want struct {
