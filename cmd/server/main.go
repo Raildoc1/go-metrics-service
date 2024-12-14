@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 	memStorage := memory.NewMemStorage()
-	logger, err := logging.CreateLogger(cfg.Development)
+	logger, err := logging.CreateLogger(!cfg.Production)
 	if err != nil {
 		log.Fatal(err)
 	}
