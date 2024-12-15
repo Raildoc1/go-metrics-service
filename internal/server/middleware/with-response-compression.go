@@ -18,6 +18,7 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
+//nolint:wrapcheck // wrapping unnecessary
 func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }

@@ -17,8 +17,8 @@ type Logger interface {
 }
 
 type Requester struct {
-	host   string
 	logger Logger
+	host   string
 }
 
 func New(host string, logger Logger) *Requester {

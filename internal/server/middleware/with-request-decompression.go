@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -14,7 +15,7 @@ type compressReader struct {
 func newCompressReader(reader io.ReadCloser) (*compressReader, error) {
 	gzipReader, err := gzip.NewReader(reader)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 
 	return &compressReader{
@@ -23,10 +24,12 @@ func newCompressReader(reader io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+//nolint:wrapcheck // wrapping unnecessary
 func (r *compressReader) Read(p []byte) (n int, err error) {
 	return r.decompressingReader.Read(p)
 }
 
+//nolint:wrapcheck // wrapping unnecessary
 func (r *compressReader) Close() error {
 	if err := r.originalReader.Close(); err != nil {
 		return err
@@ -44,13 +47,9 @@ func WithRequestDecompression(h http.Handler, logger Logger) http.Handler {
 		decompressingReader, err := newCompressReader(r.Body)
 
 		if err != nil {
-			switch err {
-			case io.EOF: // ignore.
-			default:
-				logger.Errorln("failed to decompress ", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+			logger.Errorln("failed to decompress ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		r.Body = decompressingReader
