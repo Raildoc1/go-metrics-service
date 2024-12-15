@@ -177,6 +177,54 @@ func TestUpdate(t *testing.T) {
 				contentType: "application/json",
 			},
 		},
+		{
+			name:        "get non-existing value",
+			method:      resty.MethodPost,
+			restPath:    protocol.GetMetricValueJsonURL,
+			contentType: "application/json",
+			content:     `{"id":"test2","type":"counter"}`,
+			want: want{
+				code:        http.StatusNotFound,
+				response:    "",
+				contentType: "",
+			},
+		},
+		{
+			name:        "get wrong type",
+			method:      resty.MethodPost,
+			restPath:    protocol.GetMetricValueJsonURL,
+			contentType: "application/json",
+			content:     `{"id":"test1","type":"gauge"}`,
+			want: want{
+				code:        http.StatusBadRequest,
+				response:    "",
+				contentType: "",
+			},
+		},
+		{
+			name:        "update wrong type with json",
+			method:      resty.MethodPost,
+			restPath:    protocol.UpdateJsonURL,
+			contentType: "application/json",
+			content:     `{"id":"test1","type":"gauge","value":3}`,
+			want: want{
+				code:        http.StatusBadRequest,
+				response:    "",
+				contentType: "",
+			},
+		},
+		{
+			name:        "update wrong value with json",
+			method:      resty.MethodPost,
+			restPath:    protocol.UpdateJsonURL,
+			contentType: "application/json",
+			content:     `{"id":"test1","type":"counter","value":3}`,
+			want: want{
+				code:        http.StatusBadRequest,
+				response:    "",
+				contentType: "",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -6,6 +6,7 @@ import "errors"
 
 var (
 	ErrNonExistentType = errors.New("non-existent type")
+	ErrWrongValueType  = errors.New("wrong value type")
 )
 
 // Data

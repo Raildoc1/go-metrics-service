@@ -1,10 +1,10 @@
 package requester
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"net/http"
-	"strconv"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -20,7 +20,12 @@ func New(host string) *Requester {
 }
 
 func (r *Requester) SendCounterDelta(metricName string, delta int64) error {
-	resp, err := r.sendUpdate(protocol.Counter, metricName, strconv.FormatInt(delta, 10))
+	requestData := protocol.Metrics{
+		ID:    metricName,
+		MType: protocol.Counter,
+		Delta: &delta,
+	}
+	resp, err := r.sendUpdate(requestData)
 	if err != nil {
 		return fmt.Errorf("failed to send counter delta to %s: %w", r.host, err)
 	}
@@ -31,7 +36,12 @@ func (r *Requester) SendCounterDelta(metricName string, delta int64) error {
 }
 
 func (r *Requester) SendGauge(metricName string, value float64) error {
-	resp, err := r.sendUpdate(protocol.Gauge, metricName, strconv.FormatFloat(value, 'f', -1, 64))
+	requestData := protocol.Metrics{
+		ID:    metricName,
+		MType: protocol.Gauge,
+		Value: &value,
+	}
+	resp, err := r.sendUpdate(requestData)
 	if err != nil {
 		return fmt.Errorf("failed to send gauge to %s: %w", r.host, err)
 	}
@@ -41,17 +51,18 @@ func (r *Requester) SendGauge(metricName string, value float64) error {
 	return nil
 }
 
-func (r *Requester) sendUpdate(metricType string, metricKey string, metricValue string) (*resty.Response, error) {
-	url := "http://" + r.host + protocol.UpdateMetricValueURL
+func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, error) {
+	url := "http://" + r.host + protocol.UpdateJsonURL
+
+	body, err := json.Marshal(requestData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request data: %w", err)
+	}
 
 	resp, err := resty.New().
-		SetPathParams(
-			map[string]string{
-				protocol.TypeParam:  metricType,
-				protocol.KeyParam:   metricKey,
-				protocol.ValueParam: metricValue,
-			}).
 		R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(body).
 		Post(url)
 
 	if err != nil {

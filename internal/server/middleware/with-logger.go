@@ -9,7 +9,9 @@ func WithLogger(inner http.Handler, logger Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		lrw := loggingResponseWriter{
-			inner: w,
+			inner:  w,
+			status: http.StatusOK,
+			size:   0,
 		}
 		inner.ServeHTTP(&lrw, r)
 		logger.Infoln(
