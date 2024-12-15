@@ -12,11 +12,11 @@ const (
 )
 
 const (
-	UpdateJsonURL        = "/update"
-	GetJsonURL           = "/value"
-	UpdateMetricValueURL = "/update/{" + TypeParam + "}/{" + KeyParam + "}/{" + ValueParam + "}"
-	GetMetricValueURL    = "/value/{" + TypeParam + "}/{" + KeyParam + "}"
-	GetAllMetricsURL     = "/"
+	UpdateJsonURL         = "/update"
+	GetMetricValueJsonURL = "/value"
+	UpdateMetricValueURL  = "/update/{" + TypeParam + "}/{" + KeyParam + "}/{" + ValueParam + "}"
+	GetMetricValueURL     = "/value/{" + TypeParam + "}/{" + KeyParam + "}"
+	GetAllMetricsURL      = "/"
 )
 
 type Metrics struct {

@@ -1,4 +1,4 @@
-package updatemetricvalue
+package handlers
 
 import (
 	"go-metrics-service/internal/common/protocol"
@@ -8,37 +8,25 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type CounterLogic interface {
-	Change(key string, delta int64) error
-}
-
-type GaugeLogic interface {
-	Set(key string, value float64) error
-}
-
-type Logger interface {
-	Error(args ...interface{})
-}
-
-type handler struct {
+type UpdateMetricValuePathParamsHandler struct {
 	counterLogic CounterLogic
 	gaugeLogic   GaugeLogic
 	logger       Logger
 }
 
-func New(
+func NewUpdateMetricValueHandler(
 	counterLogic CounterLogic,
 	gaugeLogic GaugeLogic,
 	logger Logger,
-) http.Handler {
-	return &handler{
+) *UpdateMetricValuePathParamsHandler {
+	return &UpdateMetricValuePathParamsHandler{
 		counterLogic: counterLogic,
 		gaugeLogic:   gaugeLogic,
 		logger:       logger,
 	}
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, protocol.KeyParam)
 	if len(key) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -56,7 +44,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *handler) handleGauge(key string, w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricValuePathParamsHandler) handleGauge(key string, w http.ResponseWriter, r *http.Request) {
 	valueStr := chi.URLParam(r, protocol.ValueParam)
 	value, err := strconv.ParseFloat(valueStr, 64)
 	if err != nil {
@@ -64,14 +52,14 @@ func (h *handler) handleGauge(key string, w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.gaugeLogic.Set(key, value); err != nil {
-		h.logger.Error(err)
+		h.logger.Errorln(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *handler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricValuePathParamsHandler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
 	deltaStr := chi.URLParam(r, protocol.ValueParam)
 	delta, err := strconv.ParseInt(deltaStr, 10, 64)
 	if err != nil {
@@ -79,7 +67,7 @@ func (h *handler) handleCounter(key string, w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if err := h.counterLogic.Change(key, delta); err != nil {
-		h.logger.Error(err)
+		h.logger.Errorln(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

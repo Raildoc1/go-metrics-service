@@ -1,4 +1,4 @@
-package getmetricvalue
+package handlers
 
 import (
 	"errors"
@@ -10,30 +10,25 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Repository interface {
-	SetFloat64(key string, value float64) error
-	GetFloat64(key string) (value float64, err error)
-	SetInt64(key string, value int64) error
-	GetInt64(key string) (value int64, err error)
+type GetMetricValueTextHandler struct {
+	gaugeRepository   GaugeRepository
+	counterRepository CounterRepository
+	logger            Logger
 }
 
-type Logger interface {
-	Error(args ...interface{})
-}
-
-type handler struct {
-	repository Repository
-	logger     Logger
-}
-
-func New(repository Repository, logger Logger) http.Handler {
-	return &handler{
-		repository: repository,
-		logger:     logger,
+func NewGetMetricValueTextHandler(
+	gaugeRepository GaugeRepository,
+	counterRepository CounterRepository,
+	logger Logger,
+) *GetMetricValueTextHandler {
+	return &GetMetricValueTextHandler{
+		gaugeRepository:   gaugeRepository,
+		counterRepository: counterRepository,
+		logger:            logger,
 	}
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GetMetricValueTextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, protocol.KeyParam)
 	if len(key) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -51,8 +46,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *handler) handleGauge(key string, w http.ResponseWriter) {
-	value, err := h.repository.GetFloat64(key)
+func (h *GetMetricValueTextHandler) handleGauge(key string, w http.ResponseWriter) {
+	value, err := h.gaugeRepository.GetFloat64(key)
 	if err != nil {
 		h.handleError(w, err)
 	} else {
@@ -60,8 +55,8 @@ func (h *handler) handleGauge(key string, w http.ResponseWriter) {
 	}
 }
 
-func (h *handler) handleCounter(key string, w http.ResponseWriter) {
-	value, err := h.repository.GetInt64(key)
+func (h *GetMetricValueTextHandler) handleCounter(key string, w http.ResponseWriter) {
+	value, err := h.counterRepository.GetInt64(key)
 	if err != nil {
 		h.handleError(w, err)
 	} else {
@@ -69,7 +64,7 @@ func (h *handler) handleCounter(key string, w http.ResponseWriter) {
 	}
 }
 
-func (h *handler) handleError(w http.ResponseWriter, err error) {
+func (h *GetMetricValueTextHandler) handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, data.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
@@ -78,17 +73,17 @@ func (h *handler) handleError(w http.ResponseWriter, err error) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	default:
-		h.logger.Error(err)
+		h.logger.Errorln(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (h *handler) writeResponse(w http.ResponseWriter, value string) {
+func (h *GetMetricValueTextHandler) writeResponse(w http.ResponseWriter, value string) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, err := w.Write([]byte(value))
 	if err != nil {
-		h.logger.Error(err)
+		h.logger.Errorln(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

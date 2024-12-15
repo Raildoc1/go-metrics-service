@@ -3,10 +3,7 @@ package server
 import (
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repository"
-	"go-metrics-service/internal/server/handlers/getallmetrics"
-	"go-metrics-service/internal/server/handlers/getmetricvalue"
-	"go-metrics-service/internal/server/handlers/updatejson"
-	"go-metrics-service/internal/server/handlers/updatemetricvalue"
+	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic/counter"
 	"go-metrics-service/internal/server/logic/gauge"
 	"go-metrics-service/internal/server/middleware"
@@ -16,11 +13,8 @@ import (
 )
 
 type Logger interface {
-	middleware.InfoLogger
-	getallmetrics.Logger
-	getmetricvalue.Logger
-	updatemetricvalue.Logger
-	updatejson.Logger
+	middleware.Logger
+	handlers.Logger
 }
 
 func NewServer(storage repository.Storage, logger Logger) http.Handler {
@@ -29,15 +23,17 @@ func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
 
-	updateMetricValueHTTPHandler := middleware.WithLogger(updatemetricvalue.New(counterLogic, gaugeLogic, logger), logger)
-	updateJsonHTTPHandler := middleware.WithLogger(updatejson.New(counterLogic, gaugeLogic, logger), logger)
-	getMetricValueHTTPHandler := middleware.WithLogger(getmetricvalue.New(rep, logger), logger)
-	getAllMetricsHTTPHandler := middleware.WithLogger(getallmetrics.New(storage, logger), logger)
+	updateMetricValueHTTPHandler := middleware.WithLogger(handlers.NewUpdateMetricValueHandler(counterLogic, gaugeLogic, logger), logger)
+	updateJsonHTTPHandler := middleware.WithLogger(handlers.NewUpdateMetricValueJsonHandler(counterLogic, gaugeLogic, logger), logger)
+	getMetricValueHTTPHandler := middleware.WithLogger(handlers.NewGetMetricValueTextHandler(rep, rep, logger), logger)
+	getMetricValueJsonHandler := middleware.WithLogger(handlers.NewGetMetricValueJsonHandler(rep, rep, logger), logger)
+	getAllMetricsHTTPHandler := middleware.WithLogger(handlers.NewGetAllMetrics(storage, logger), logger)
 
 	router := chi.NewRouter()
 
 	router.Post(protocol.UpdateJsonURL, updateJsonHTTPHandler.ServeHTTP)
 	router.Post(protocol.UpdateMetricValueURL, updateMetricValueHTTPHandler.ServeHTTP)
+	router.Post(protocol.GetMetricValueJsonURL, getMetricValueJsonHandler.ServeHTTP)
 	router.Get(protocol.GetMetricValueURL, getMetricValueHTTPHandler.ServeHTTP)
 	router.Get(protocol.GetAllMetricsURL, getAllMetricsHTTPHandler.ServeHTTP)
 
