@@ -23,27 +23,27 @@ func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
 
-	updateMetricPathParamsHandler := middleware.WithLogger(
+	updateMetricPathParamsHandler := wrapHandler(
 		handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger),
 		logger,
 	)
 
-	updateMetricHandler := middleware.WithLogger(
+	updateMetricHandler := wrapHandler(
 		handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger),
 		logger,
 	)
 
-	getMetricValuePathParamsHandler := middleware.WithLogger(
+	getMetricValuePathParamsHandler := wrapHandler(
 		handlers.NewGetMetricValuePathParams(rep, rep, logger),
 		logger,
 	)
 
-	getMetricValueHandler := middleware.WithLogger(
+	getMetricValueHandler := wrapHandler(
 		handlers.NewGetMetricValue(rep, rep, logger),
 		logger,
 	)
 
-	getAllMetricsHandler := middleware.WithLogger(
+	getAllMetricsHandler := wrapHandler(
 		handlers.NewGetAllMetrics(storage, logger),
 		logger,
 	)
@@ -57,4 +57,14 @@ func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
 
 	return router
+}
+
+func wrapHandler(handler http.Handler, logger Logger) http.Handler {
+	return middleware.WithLogger(
+		middleware.WithRequestDecompression(
+			middleware.WithResponseCompression(
+				handler, logger,
+			), logger,
+		), logger,
+	)
 }

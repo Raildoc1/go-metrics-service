@@ -2,9 +2,9 @@ package main
 
 import (
 	"go-metrics-service/cmd/server/config"
+	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
 	"go-metrics-service/internal/server/data/storage/memory"
-	"go-metrics-service/internal/server/logging"
 	"log"
 	"net/http"
 
@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 	memStorage := memory.NewMemStorage()
-	logger, err := logging.CreateLogger(!cfg.Production)
+	logger, err := logging.CreateZapLogger(!cfg.Production)
 	if err != nil {
 		log.Fatal(err)
 	}

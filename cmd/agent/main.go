@@ -3,7 +3,10 @@ package main
 import (
 	"go-metrics-service/cmd/agent/config"
 	"go-metrics-service/internal/agent"
+	"go-metrics-service/internal/common/logging"
 	"log"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -11,7 +14,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = agent.Run(cfg.Agent)
+	logger, err := logging.CreateZapLogger(!cfg.Production)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func(logger *zap.SugaredLogger) {
+		err := logger.Sync()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(logger)
+	err = agent.Run(cfg.Agent, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
