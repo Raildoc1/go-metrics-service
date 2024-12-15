@@ -66,13 +66,19 @@ func (h *GetMetricValueJsonHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	jsonEncoder := json.NewEncoder(w)
-	if err := jsonEncoder.Encode(requestData); err != nil {
+	encoded, err := json.Marshal(requestData)
+	if err != nil {
 		h.logger.Errorln(err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(encoded)
+	if err != nil {
+		h.logger.Errorln(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *GetMetricValueJsonHandler) fill(requestData *protocol.Metrics) error {

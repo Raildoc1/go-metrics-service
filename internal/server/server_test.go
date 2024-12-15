@@ -31,11 +31,13 @@ func TestUpdate(t *testing.T) {
 		contentType string
 	}
 	tests := []struct {
-		name       string
-		restPath   string
-		method     string
-		pathParams map[string]string
-		want       want
+		name        string
+		restPath    string
+		method      string
+		pathParams  map[string]string
+		contentType string
+		content     string
+		want        want
 	}{
 		{
 			name:     "add value",
@@ -123,13 +125,73 @@ func TestUpdate(t *testing.T) {
 				contentType: "",
 			},
 		},
+		{
+			name:     "get value with wrong type",
+			method:   resty.MethodGet,
+			restPath: protocol.GetMetricValueURL,
+			pathParams: map[string]string{
+				protocol.TypeParam: protocol.Gauge,
+				protocol.KeyParam:  "test1",
+			},
+			want: want{
+				code:        http.StatusBadRequest,
+				response:    "",
+				contentType: "",
+			},
+		},
+		{
+			name:        "update value with json",
+			method:      resty.MethodPost,
+			restPath:    protocol.UpdateJsonURL,
+			contentType: "application/json",
+			content:     `{"id":"test1","type":"counter","delta":3}`,
+			want: want{
+				code:        http.StatusOK,
+				response:    "",
+				contentType: "",
+			},
+		},
+		{
+			name:     "get value",
+			method:   resty.MethodGet,
+			restPath: protocol.GetMetricValueURL,
+			pathParams: map[string]string{
+				protocol.TypeParam: protocol.Counter,
+				protocol.KeyParam:  "test1",
+			},
+			want: want{
+				code:        http.StatusOK,
+				response:    "-4",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:        "get value json",
+			method:      resty.MethodPost,
+			restPath:    protocol.GetMetricValueJsonURL,
+			contentType: "application/json",
+			content:     `{"id":"test1","type":"counter"}`,
+			want: want{
+				code:        http.StatusOK,
+				response:    `{"id":"test1","type":"counter","delta":-4}`,
+				contentType: "application/json",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := resty.
-				New().
-				SetPathParams(test.pathParams).
-				R()
+			client := resty.New()
+
+			if test.pathParams != nil {
+				client.SetPathParams(test.pathParams)
+			}
+
+			request := client.R()
+
+			if test.contentType != "" {
+				request.Header.Add("Content-Type", test.contentType)
+				request.SetBody(test.content)
+			}
 
 			url := server.URL + test.restPath
 
