@@ -10,25 +10,25 @@ import (
 	"net/http"
 )
 
-type GetMetricValueJsonHandler struct {
+type GetMetricValueHandler struct {
 	gaugeRepository   GaugeRepository
 	counterRepository CounterRepository
 	logger            Logger
 }
 
-func NewGetMetricValueJsonHandler(
+func NewGetMetricValue(
 	gaugeRepository GaugeRepository,
 	counterRepository CounterRepository,
 	logger Logger,
-) *GetMetricValueJsonHandler {
-	return &GetMetricValueJsonHandler{
+) *GetMetricValueHandler {
+	return &GetMetricValueHandler{
 		gaugeRepository:   gaugeRepository,
 		counterRepository: counterRepository,
 		logger:            logger,
 	}
 }
 
-func (h *GetMetricValueJsonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
@@ -81,18 +81,18 @@ func (h *GetMetricValueJsonHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (h *GetMetricValueJsonHandler) fill(requestData *protocol.Metrics) error {
+func (h *GetMetricValueHandler) fill(requestData *protocol.Metrics) error {
 	switch requestData.MType {
 	case protocol.Gauge:
 		value, err := h.gaugeRepository.GetFloat64(requestData.ID)
 		if err != nil {
-			return err
+			return fmt.Errorf("get gauge: %w", err)
 		}
 		requestData.Value = &value
 	case protocol.Counter:
 		value, err := h.counterRepository.GetInt64(requestData.ID)
 		if err != nil {
-			return err
+			return fmt.Errorf("get counter: %w", err)
 		}
 		requestData.Delta = &value
 	default:

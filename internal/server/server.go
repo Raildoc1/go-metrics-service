@@ -23,19 +23,38 @@ func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
 
-	updateMetricValueHTTPHandler := middleware.WithLogger(handlers.NewUpdateMetricValueHandler(counterLogic, gaugeLogic, logger), logger)
-	updateJsonHTTPHandler := middleware.WithLogger(handlers.NewUpdateMetricValueJsonHandler(counterLogic, gaugeLogic, logger), logger)
-	getMetricValueHTTPHandler := middleware.WithLogger(handlers.NewGetMetricValueTextHandler(rep, rep, logger), logger)
-	getMetricValueJsonHandler := middleware.WithLogger(handlers.NewGetMetricValueJsonHandler(rep, rep, logger), logger)
-	getAllMetricsHTTPHandler := middleware.WithLogger(handlers.NewGetAllMetrics(storage, logger), logger)
+	updateMetricPathParamsHandler := middleware.WithLogger(
+		handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger),
+		logger,
+	)
+
+	updateMetricHandler := middleware.WithLogger(
+		handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger),
+		logger,
+	)
+
+	getMetricValuePathParamsHandler := middleware.WithLogger(
+		handlers.NewGetMetricValuePathParams(rep, rep, logger),
+		logger,
+	)
+
+	getMetricValueHandler := middleware.WithLogger(
+		handlers.NewGetMetricValue(rep, rep, logger),
+		logger,
+	)
+
+	getAllMetricsHandler := middleware.WithLogger(
+		handlers.NewGetAllMetrics(storage, logger),
+		logger,
+	)
 
 	router := chi.NewRouter()
 
-	router.Post(protocol.UpdateJsonURL, updateJsonHTTPHandler.ServeHTTP)
-	router.Post(protocol.UpdateMetricValueURL, updateMetricValueHTTPHandler.ServeHTTP)
-	router.Post(protocol.GetMetricValueJsonURL, getMetricValueJsonHandler.ServeHTTP)
-	router.Get(protocol.GetMetricValueURL, getMetricValueHTTPHandler.ServeHTTP)
-	router.Get(protocol.GetAllMetricsURL, getAllMetricsHTTPHandler.ServeHTTP)
+	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
+	router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
+	router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
+	router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
+	router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
 
 	return router
 }

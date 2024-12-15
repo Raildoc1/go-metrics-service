@@ -10,25 +10,25 @@ import (
 	"net/http"
 )
 
-type UpdateMetricValueJsonHandler struct {
+type UpdateMetricValueHandler struct {
 	counterLogic CounterLogic
 	gaugeLogic   GaugeLogic
 	logger       Logger
 }
 
-func NewUpdateMetricValueJsonHandler(
+func NewUpdateMetric(
 	counterLogic CounterLogic,
 	gaugeLogic GaugeLogic,
 	logger Logger,
 ) http.Handler {
-	return &UpdateMetricValueJsonHandler{
+	return &UpdateMetricValueHandler{
 		counterLogic: counterLogic,
 		gaugeLogic:   gaugeLogic,
 		logger:       logger,
 	}
 }
 
-func (h *UpdateMetricValueJsonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
@@ -66,21 +66,21 @@ func (h *UpdateMetricValueJsonHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	}
 }
 
-func (h *UpdateMetricValueJsonHandler) update(requestData *protocol.Metrics) error {
+func (h *UpdateMetricValueHandler) update(requestData *protocol.Metrics) error {
 	switch requestData.MType {
 	case protocol.Gauge:
 		if requestData.Value == nil {
 			return ErrWrongValueType
 		}
 		if err := h.gaugeLogic.Set(requestData.ID, *requestData.Value); err != nil {
-			return err
+			return fmt.Errorf("set gauge: %w", err)
 		}
 	case protocol.Counter:
 		if requestData.Delta == nil {
 			return ErrWrongValueType
 		}
 		if err := h.counterLogic.Change(requestData.ID, *requestData.Delta); err != nil {
-			return err
+			return fmt.Errorf("change counter: %w", err)
 		}
 	default:
 		return fmt.Errorf("%w:  %s ", ErrNonExistentType, requestData.MType)

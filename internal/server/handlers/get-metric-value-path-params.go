@@ -10,25 +10,25 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type GetMetricValueTextHandler struct {
+type GetMetricValuePathParamsHandler struct {
 	gaugeRepository   GaugeRepository
 	counterRepository CounterRepository
 	logger            Logger
 }
 
-func NewGetMetricValueTextHandler(
+func NewGetMetricValuePathParams(
 	gaugeRepository GaugeRepository,
 	counterRepository CounterRepository,
 	logger Logger,
-) *GetMetricValueTextHandler {
-	return &GetMetricValueTextHandler{
+) *GetMetricValuePathParamsHandler {
+	return &GetMetricValuePathParamsHandler{
 		gaugeRepository:   gaugeRepository,
 		counterRepository: counterRepository,
 		logger:            logger,
 	}
 }
 
-func (h *GetMetricValueTextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GetMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, protocol.KeyParam)
 	if len(key) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -46,7 +46,7 @@ func (h *GetMetricValueTextHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (h *GetMetricValueTextHandler) handleGauge(key string, w http.ResponseWriter) {
+func (h *GetMetricValuePathParamsHandler) handleGauge(key string, w http.ResponseWriter) {
 	value, err := h.gaugeRepository.GetFloat64(key)
 	if err != nil {
 		h.handleError(w, err)
@@ -55,7 +55,7 @@ func (h *GetMetricValueTextHandler) handleGauge(key string, w http.ResponseWrite
 	}
 }
 
-func (h *GetMetricValueTextHandler) handleCounter(key string, w http.ResponseWriter) {
+func (h *GetMetricValuePathParamsHandler) handleCounter(key string, w http.ResponseWriter) {
 	value, err := h.counterRepository.GetInt64(key)
 	if err != nil {
 		h.handleError(w, err)
@@ -64,7 +64,7 @@ func (h *GetMetricValueTextHandler) handleCounter(key string, w http.ResponseWri
 	}
 }
 
-func (h *GetMetricValueTextHandler) handleError(w http.ResponseWriter, err error) {
+func (h *GetMetricValuePathParamsHandler) handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, data.ErrNotFound):
 		w.WriteHeader(http.StatusNotFound)
@@ -79,7 +79,7 @@ func (h *GetMetricValueTextHandler) handleError(w http.ResponseWriter, err error
 	}
 }
 
-func (h *GetMetricValueTextHandler) writeResponse(w http.ResponseWriter, value string) {
+func (h *GetMetricValuePathParamsHandler) writeResponse(w http.ResponseWriter, value string) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, err := w.Write([]byte(value))
 	if err != nil {

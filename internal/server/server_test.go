@@ -42,7 +42,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "add value",
 			method:   resty.MethodPost,
-			restPath: protocol.UpdateMetricValueURL,
+			restPath: protocol.UpdateMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test1",
@@ -57,7 +57,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueURL,
+			restPath: protocol.GetMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test1",
@@ -71,7 +71,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "subtract value",
 			method:   resty.MethodPost,
-			restPath: protocol.UpdateMetricValueURL,
+			restPath: protocol.UpdateMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test1",
@@ -86,7 +86,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueURL,
+			restPath: protocol.GetMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test1",
@@ -100,7 +100,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get non-existing value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueURL,
+			restPath: protocol.GetMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test2",
@@ -114,7 +114,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value with wrong type",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueURL,
+			restPath: protocol.GetMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Gauge,
 				protocol.KeyParam:  "test1",
@@ -128,7 +128,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value with wrong type",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueURL,
+			restPath: protocol.GetMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Gauge,
 				protocol.KeyParam:  "test1",
@@ -142,7 +142,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:        "update value with json",
 			method:      resty.MethodPost,
-			restPath:    protocol.UpdateJsonURL,
+			restPath:    protocol.UpdateMetricURL,
 			contentType: "application/json",
 			content:     `{"id":"test1","type":"counter","delta":3}`,
 			want: want{
@@ -154,7 +154,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:     "get value",
 			method:   resty.MethodGet,
-			restPath: protocol.GetMetricValueURL,
+			restPath: protocol.GetMetricPathParamsURL,
 			pathParams: map[string]string{
 				protocol.TypeParam: protocol.Counter,
 				protocol.KeyParam:  "test1",
@@ -168,7 +168,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:        "get value json",
 			method:      resty.MethodPost,
-			restPath:    protocol.GetMetricValueJsonURL,
+			restPath:    protocol.GetMetricURL,
 			contentType: "application/json",
 			content:     `{"id":"test1","type":"counter"}`,
 			want: want{
@@ -180,7 +180,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:        "get non-existing value",
 			method:      resty.MethodPost,
-			restPath:    protocol.GetMetricValueJsonURL,
+			restPath:    protocol.GetMetricURL,
 			contentType: "application/json",
 			content:     `{"id":"test2","type":"counter"}`,
 			want: want{
@@ -192,7 +192,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:        "get wrong type",
 			method:      resty.MethodPost,
-			restPath:    protocol.GetMetricValueJsonURL,
+			restPath:    protocol.GetMetricURL,
 			contentType: "application/json",
 			content:     `{"id":"test1","type":"gauge"}`,
 			want: want{
@@ -204,7 +204,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:        "update wrong type with json",
 			method:      resty.MethodPost,
-			restPath:    protocol.UpdateJsonURL,
+			restPath:    protocol.UpdateMetricURL,
 			contentType: "application/json",
 			content:     `{"id":"test1","type":"gauge","value":3}`,
 			want: want{
@@ -216,7 +216,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name:        "update wrong value with json",
 			method:      resty.MethodPost,
-			restPath:    protocol.UpdateJsonURL,
+			restPath:    protocol.UpdateMetricURL,
 			contentType: "application/json",
 			content:     `{"id":"test1","type":"counter","value":3}`,
 			want: want{

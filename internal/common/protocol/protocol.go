@@ -12,13 +12,14 @@ const (
 )
 
 const (
-	UpdateJsonURL         = "/update"
-	GetMetricValueJsonURL = "/value"
-	UpdateMetricValueURL  = "/update/{" + TypeParam + "}/{" + KeyParam + "}/{" + ValueParam + "}"
-	GetMetricValueURL     = "/value/{" + TypeParam + "}/{" + KeyParam + "}"
-	GetAllMetricsURL      = "/"
+	UpdateMetricURL           = "/update"
+	GetMetricURL              = "/value"
+	UpdateMetricPathParamsURL = "/update/{" + TypeParam + "}/{" + KeyParam + "}/{" + ValueParam + "}"
+	GetMetricPathParamsURL    = "/value/{" + TypeParam + "}/{" + KeyParam + "}"
+	GetAllMetricsURL          = "/"
 )
 
+//nolint:govet // field alignment
 type Metrics struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`

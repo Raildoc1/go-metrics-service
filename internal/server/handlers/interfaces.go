@@ -2,14 +2,14 @@ package handlers
 
 import "errors"
 
-// Errors
+// Errors.
 
 var (
 	ErrNonExistentType = errors.New("non-existent type")
 	ErrWrongValueType  = errors.New("wrong value type")
 )
 
-// Data
+// Data.
 
 type GaugeRepository interface {
 	SetFloat64(key string, value float64) error
@@ -25,7 +25,7 @@ type AllMetricsRepository interface {
 	GetAll() map[string]any
 }
 
-// Logic
+// Logic.
 
 type CounterLogic interface {
 	Change(key string, delta int64) error
@@ -35,7 +35,7 @@ type GaugeLogic interface {
 	Set(key string, value float64) error
 }
 
-// Utils
+// Utils.
 
 type Logger interface {
 	Errorln(args ...interface{})

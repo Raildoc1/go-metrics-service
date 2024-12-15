@@ -52,7 +52,7 @@ func (r *Requester) SendGauge(metricName string, value float64) error {
 }
 
 func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, error) {
-	url := "http://" + r.host + protocol.UpdateJsonURL
+	url := "http://" + r.host + protocol.UpdateMetricURL
 
 	body, err := json.Marshal(requestData)
 	if err != nil {

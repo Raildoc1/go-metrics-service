@@ -8,25 +8,25 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type UpdateMetricValuePathParamsHandler struct {
+type UpdateMetricPathParamsHandler struct {
 	counterLogic CounterLogic
 	gaugeLogic   GaugeLogic
 	logger       Logger
 }
 
-func NewUpdateMetricValueHandler(
+func NewUpdateMetricPathParams(
 	counterLogic CounterLogic,
 	gaugeLogic GaugeLogic,
 	logger Logger,
-) *UpdateMetricValuePathParamsHandler {
-	return &UpdateMetricValuePathParamsHandler{
+) *UpdateMetricPathParamsHandler {
+	return &UpdateMetricPathParamsHandler{
 		counterLogic: counterLogic,
 		gaugeLogic:   gaugeLogic,
 		logger:       logger,
 	}
 }
 
-func (h *UpdateMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, protocol.KeyParam)
 	if len(key) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -44,7 +44,7 @@ func (h *UpdateMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r 
 	}
 }
 
-func (h *UpdateMetricValuePathParamsHandler) handleGauge(key string, w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricPathParamsHandler) handleGauge(key string, w http.ResponseWriter, r *http.Request) {
 	valueStr := chi.URLParam(r, protocol.ValueParam)
 	value, err := strconv.ParseFloat(valueStr, 64)
 	if err != nil {
@@ -59,7 +59,7 @@ func (h *UpdateMetricValuePathParamsHandler) handleGauge(key string, w http.Resp
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *UpdateMetricValuePathParamsHandler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
+func (h *UpdateMetricPathParamsHandler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
 	deltaStr := chi.URLParam(r, protocol.ValueParam)
 	delta, err := strconv.ParseInt(deltaStr, 10, 64)
 	if err != nil {
