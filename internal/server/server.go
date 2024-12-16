@@ -23,30 +23,38 @@ func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
 
-	updateMetricPathParamsHandler := wrapHandler(
-		handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger),
-		logger,
-	)
+	updateMetricPathParamsHandler := middleware.
+		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		Build()
 
-	updateMetricHandler := wrapHandler(
-		handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger),
-		logger,
-	)
+	updateMetricHandler := middleware.
+		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		Build()
 
-	getMetricValuePathParamsHandler := wrapHandler(
-		handlers.NewGetMetricValuePathParams(rep, rep, logger),
-		logger,
-	)
+	getMetricValuePathParamsHandler := middleware.
+		NewBuilder(handlers.NewGetMetricValuePathParams(rep, rep, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		WithResponseCompression(logger).
+		Build()
 
-	getMetricValueHandler := wrapHandler(
-		handlers.NewGetMetricValue(rep, rep, logger),
-		logger,
-	)
+	getMetricValueHandler := middleware.
+		NewBuilder(handlers.NewGetMetricValue(rep, rep, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		WithResponseCompression(logger).
+		Build()
 
-	getAllMetricsHandler := wrapHandler(
-		handlers.NewGetAllMetrics(storage, logger),
-		logger,
-	)
+	getAllMetricsHandler := middleware.
+		NewBuilder(handlers.NewGetAllMetrics(storage, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		WithResponseCompression(logger).
+		Build()
 
 	router := chi.NewRouter()
 
@@ -57,14 +65,4 @@ func NewServer(storage repository.Storage, logger Logger) http.Handler {
 	router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
 
 	return router
-}
-
-func wrapHandler(handler http.Handler, logger Logger) http.Handler {
-	return middleware.WithLogger(
-		middleware.WithRequestDecompression(
-			middleware.WithResponseCompression(
-				handler, logger,
-			), logger,
-		), logger,
-	)
 }
