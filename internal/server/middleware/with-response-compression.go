@@ -11,6 +11,7 @@ import (
 const (
 	contentApplicationJSON = "application/json"
 	contentTextPlain       = "text/plain"
+	contentHTML            = "text/html"
 )
 
 type gzipWriter struct {
@@ -27,6 +28,7 @@ func WithResponseCompression(h http.Handler, logger Logger) http.Handler {
 	contentToCompress := []string{
 		contentTextPlain,
 		contentApplicationJSON,
+		contentHTML,
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
