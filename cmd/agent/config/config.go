@@ -24,7 +24,8 @@ const (
 )
 
 type Config struct {
-	Agent agent.Config
+	Agent      agent.Config
+	Production bool
 }
 
 func Load() (Config, error) {
@@ -88,10 +89,11 @@ func Load() (Config, error) {
 	sendingFreq := time.Duration(*sendingIntervalSeconds) * time.Second
 
 	return Config{
-		agent.Config{
+		Agent: agent.Config{
 			ServerAddress:   *serverAddress,
 			SendingInterval: sendingFreq,
 			PollingInterval: pollingFreq,
 		},
+		Production: false,
 	}, nil
 }
