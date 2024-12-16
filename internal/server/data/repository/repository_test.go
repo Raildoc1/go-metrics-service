@@ -2,14 +2,16 @@ package repository
 
 import (
 	"go-metrics-service/internal/server/data"
-	"go-metrics-service/internal/server/data/storage/memory"
+	"go-metrics-service/internal/server/data/storage"
 	"testing"
+
+	"go.uber.org/zap"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestKeysCollision(t *testing.T) {
-	ms := memory.NewMemStorage()
+	ms := storage.NewMemStorage(zap.NewNop().Sugar())
 
 	rep := New(ms)
 

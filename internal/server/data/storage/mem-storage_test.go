@@ -1,8 +1,11 @@
-package memory
+package storage
 
 import (
 	"math"
+	"os"
 	"testing"
+
+	"go.uber.org/zap"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +44,7 @@ func TestGetExistingValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ms := NewMemStorage()
+			ms := NewMemStorage(zap.NewNop().Sugar())
 
 			ms.Set("key", test.value)
 			val, ok := ms.Get("key")
@@ -53,7 +56,34 @@ func TestGetExistingValue(t *testing.T) {
 }
 
 func TestGetNonExistingValue(t *testing.T) {
-	ms := NewMemStorage()
+	ms := NewMemStorage(zap.NewNop().Sugar())
 	_, ok := ms.Get("non_existing_key")
 	require.False(t, ok)
+}
+
+func TestFileSaveLoad(t *testing.T) {
+	testData := map[string]interface{}{
+		"test_key_1": 3,
+		"test_key_2": -34,
+		"test_key_3": 234,
+		"test_key_4": 34.6,
+		"test_key_5": -43.23,
+		"test_key_6": "Hello, World!",
+		"test_key_7": "",
+	}
+	ms1 := NewMemStorage(zap.NewNop().Sugar())
+	for k, v := range testData {
+		ms1.Set(k, v)
+	}
+	err := ms1.SaveToFile("test.gz")
+	defer os.Remove("test.gz")
+	require.NoError(t, err)
+	ms2 := NewMemStorage(zap.NewNop().Sugar())
+	err = ms2.LoadFromFile("test.gz")
+	require.NoError(t, err)
+	for k, v := range testData {
+		val, ok := ms1.Get(k)
+		require.Equal(t, true, ok)
+		assert.Equal(t, v, val)
+	}
 }

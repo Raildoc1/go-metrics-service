@@ -2,7 +2,7 @@ package server
 
 import (
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/storage/memory"
+	"go-metrics-service/internal/server/data/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +16,7 @@ import (
 )
 
 func setupServer() *httptest.Server {
-	memStorage := memory.NewMemStorage()
+	memStorage := storage.NewMemStorage(zap.NewNop().Sugar())
 	handler := NewServer(memStorage, zap.NewNop().Sugar())
 	return httptest.NewServer(handler)
 }
