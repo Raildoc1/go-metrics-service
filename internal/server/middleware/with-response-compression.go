@@ -17,7 +17,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func WithResponseCompression(h http.Handler, logger Logger) http.Handler {
+func withResponseCompression(h http.Handler, logger Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			logger.Debugln(r.Method, " ", r.URL, " compression missed")

@@ -15,17 +15,17 @@ func NewBuilder(handler http.Handler) *Builder {
 }
 
 func (b *Builder) WithLogger(logger Logger) *Builder {
-	b.httpHandler = WithLogger(b.httpHandler, logger)
+	b.httpHandler = withLogger(b.httpHandler, logger)
 	return b
 }
 
 func (b *Builder) WithRequestDecompression(logger Logger) *Builder {
-	b.httpHandler = WithRequestDecompression(b.httpHandler, logger)
+	b.httpHandler = withRequestDecompression(b.httpHandler, logger)
 	return b
 }
 
 func (b *Builder) WithResponseCompression(logger Logger) *Builder {
-	b.httpHandler = WithResponseCompression(b.httpHandler, logger)
+	b.httpHandler = withResponseCompression(b.httpHandler, logger)
 	return b
 }
 

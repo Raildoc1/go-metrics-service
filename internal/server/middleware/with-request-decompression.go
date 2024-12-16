@@ -37,7 +37,7 @@ func (r *compressReader) Close() error {
 	return r.decompressingReader.Close()
 }
 
-func WithRequestDecompression(h http.Handler, logger Logger) http.Handler {
+func withRequestDecompression(h http.Handler, logger Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Encoding") != "gzip" {
 			h.ServeHTTP(w, r)

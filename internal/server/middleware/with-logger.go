@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func WithLogger(inner http.Handler, logger Logger) http.Handler {
+func withLogger(inner http.Handler, logger Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		lrw := loggingResponseWriter{
