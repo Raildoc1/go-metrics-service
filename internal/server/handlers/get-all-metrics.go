@@ -31,12 +31,11 @@ func (h *GetAllMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Add("Content-Type", "text/html")
 	err = tmpl.Execute(w, buffer.String())
 	if err != nil {
 		h.logger.Errorln(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Add("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
 }
