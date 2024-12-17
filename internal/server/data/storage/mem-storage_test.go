@@ -3,6 +3,7 @@ package storage
 import (
 	"math"
 	"os"
+	"reflect"
 	"testing"
 
 	"go.uber.org/zap"
@@ -63,11 +64,11 @@ func TestGetNonExistingValue(t *testing.T) {
 
 func TestFileSaveLoad(t *testing.T) {
 	testData := map[string]interface{}{
-		"test_key_1": 3,
-		"test_key_2": -34,
-		"test_key_3": 234,
-		"test_key_4": 34.6,
-		"test_key_5": -43.23,
+		"test_key_1": int64(3),
+		"test_key_2": int64(-34),
+		"test_key_3": int64(234),
+		"test_key_4": float64(34.6),
+		"test_key_5": float64(-43.23),
 		"test_key_6": "Hello, World!",
 		"test_key_7": "",
 	}
@@ -84,8 +85,9 @@ func TestFileSaveLoad(t *testing.T) {
 	err = ms2.LoadFromFile("test.gz")
 	require.NoError(t, err)
 	for k, v := range testData {
-		val, ok := ms1.Get(k)
+		val, ok := ms2.Get(k)
 		require.Equal(t, true, ok)
 		assert.Equal(t, v, val)
+		assert.Equal(t, reflect.TypeOf(v), reflect.TypeOf(val))
 	}
 }

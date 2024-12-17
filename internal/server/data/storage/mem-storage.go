@@ -2,7 +2,7 @@ package storage
 
 import (
 	"compress/gzip"
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"go-metrics-service/internal/server/data"
 	"os"
@@ -14,7 +14,7 @@ type MemStorage struct {
 }
 
 type serializableData struct {
-	Data map[string]any `json:"data"`
+	Data map[string]any
 }
 
 func NewMemStorage(logger data.Logger) *MemStorage {
@@ -43,11 +43,6 @@ func (m *MemStorage) GetAll() map[string]any {
 }
 
 func (m *MemStorage) SaveToFile(filePath string) error {
-	serializedData, err := json.Marshal(serializableData{Data: m.data})
-	if err != nil {
-		return fmt.Errorf("failed to marshal data: %w", err)
-	}
-
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
@@ -70,9 +65,9 @@ func (m *MemStorage) SaveToFile(filePath string) error {
 		return fmt.Errorf("failed to create gzip writer: %w", err)
 	}
 
-	_, err = gzipWriter.Write(serializedData)
+	err = gob.NewEncoder(gzipWriter).Encode(serializableData{Data: m.data})
 	if err != nil {
-		return fmt.Errorf("failed to write data: %w", err)
+		return fmt.Errorf("failed to encode data: %w", err)
 	}
 	return nil
 }
@@ -101,8 +96,8 @@ func (m *MemStorage) LoadFromFile(filePath string) error {
 	}(gzipReader)
 
 	var readData serializableData
-	jsonDecoder := json.NewDecoder(gzipReader)
-	err = jsonDecoder.Decode(&readData)
+	gobDecoder := gob.NewDecoder(gzipReader)
+	err = gobDecoder.Decode(&readData)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal data: %w", err)
 	}
