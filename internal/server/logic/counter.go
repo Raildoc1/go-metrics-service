@@ -1,26 +1,23 @@
-package counter
+package logic
 
 import (
 	"fmt"
 )
 
-type repository interface {
-	Has(key string) bool
-	GetInt64(key string) (value int64, err error)
-	SetInt64(key string, value int64) error
-}
-
 type Counter struct {
-	repository repository
+	repository CounterRepository
+	logger     Logger
 }
 
-func New(repository repository) *Counter {
+func NewCounter(repository CounterRepository, logger Logger) *Counter {
 	return &Counter{
 		repository: repository,
+		logger:     logger,
 	}
 }
 
 func (c *Counter) Change(key string, delta int64) error {
+	c.logger.Debugln("changing counter ", key, " ", delta)
 	var prevValue int64
 	if !c.repository.Has(key) {
 		prevValue = int64(0)

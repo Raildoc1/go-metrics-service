@@ -7,8 +7,7 @@ import (
 	"go-metrics-service/internal/server/data/repository"
 	"go-metrics-service/internal/server/data/storage"
 	"go-metrics-service/internal/server/handlers"
-	"go-metrics-service/internal/server/logic/counter"
-	"go-metrics-service/internal/server/logic/gauge"
+	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
 	"os"
@@ -90,8 +89,8 @@ func trySaveStorage(filePath string, logger Logger, memStorage *storage.MemStora
 func createMux(strg repository.Storage, logger Logger) *chi.Mux {
 	rep := repository.New(strg)
 
-	counterLogic := counter.New(rep)
-	gaugeLogic := gauge.New(rep)
+	counterLogic := logic.NewCounter(rep, logger)
+	gaugeLogic := logic.New(rep, logger)
 
 	updateMetricPathParamsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
