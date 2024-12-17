@@ -17,8 +17,8 @@ import (
 
 func setupServer() *httptest.Server {
 	memStorage := storage.NewMemStorage(zap.NewNop().Sugar())
-	handler := NewServer(memStorage, zap.NewNop().Sugar())
-	return httptest.NewServer(handler)
+	mux := createMux(memStorage, zap.NewNop().Sugar())
+	return httptest.NewServer(mux)
 }
 
 func TestUpdate(t *testing.T) {

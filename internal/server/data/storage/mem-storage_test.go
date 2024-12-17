@@ -76,7 +76,9 @@ func TestFileSaveLoad(t *testing.T) {
 		ms1.Set(k, v)
 	}
 	err := ms1.SaveToFile("test.gz")
-	defer os.Remove("test.gz")
+	defer func() {
+		_ = os.Remove("test.gz")
+	}()
 	require.NoError(t, err)
 	ms2 := NewMemStorage(zap.NewNop().Sugar())
 	err = ms2.LoadFromFile("test.gz")

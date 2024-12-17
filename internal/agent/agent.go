@@ -15,14 +15,12 @@ type Logger interface {
 	metricsRequester.Logger
 }
 
-func Run(cfg config.Config, logger Logger) error {
+func Run(cfg config.Config, logger Logger) {
 	collector := metricsCollector.New()
 	requester := metricsRequester.New(cfg.ServerAddress, logger)
 	sender := metricsSender.New(collector, requester)
 
 	lifecycle(cfg, collector, sender)
-
-	return nil
 }
 
 func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {

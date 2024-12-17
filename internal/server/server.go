@@ -1,13 +1,20 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repository"
+	"go-metrics-service/internal/server/data/storage"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic/counter"
 	"go-metrics-service/internal/server/logic/gauge"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -17,7 +24,65 @@ type Logger interface {
 	handlers.Logger
 }
 
-func NewServer(storage repository.Storage, logger Logger) http.Handler {
+func Run(cfg Config, logger Logger) {
+	memStorage := storage.NewMemStorage(logger)
+	if cfg.NeedRestore {
+		if _, err := os.Stat(cfg.FilePath); err == nil {
+			err := memStorage.LoadFromFile(cfg.FilePath)
+			if err != nil {
+				logger.Errorln(err)
+			} else {
+				logger.Infoln("Data successfully restored")
+			}
+		}
+	}
+
+	srv := &http.Server{Addr: cfg.ServerAddress}
+	srv.Handler = createMux(memStorage, logger)
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Errorln(err)
+		}
+	}()
+
+	lifecycle(cfg, logger, memStorage)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Errorln(err)
+	}
+}
+
+func lifecycle(cfg Config, logger Logger, memStorage *storage.MemStorage) {
+	storeTicker := time.NewTicker(cfg.StoreInterval)
+
+	cancelChan := make(chan os.Signal, 1)
+	signal.Notify(
+		cancelChan,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		syscall.SIGABRT,
+	)
+
+	for {
+		select {
+		case <-storeTicker.C:
+			if err := memStorage.SaveToFile(cfg.FilePath); err != nil {
+				logger.Errorln(err)
+			} else {
+				logger.Infoln("Data successfully saved")
+			}
+		case <-cancelChan:
+			return
+		}
+	}
+}
+
+func createMux(storage repository.Storage, logger Logger) *chi.Mux {
 	rep := repository.New(storage)
 
 	counterLogic := counter.New(rep)

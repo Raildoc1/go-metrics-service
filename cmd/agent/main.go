@@ -24,8 +24,6 @@ func main() {
 			log.Fatal(err)
 		}
 	}(logger)
-	err = agent.Run(cfg.Agent, logger)
-	if err != nil {
-		logger.Error(err)
-	}
+
+	agent.Run(cfg.Agent, logger)
 }
