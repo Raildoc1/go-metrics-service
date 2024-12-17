@@ -21,7 +21,7 @@ const (
 
 const (
 	DefaultFileStoragePath = "./data.gz"
-	DefaultStoreInterval   = 10
+	DefaultStoreInterval   = 300
 	DefaultRestore         = true
 )
 

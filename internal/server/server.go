@@ -71,14 +71,19 @@ func lifecycle(cfg Config, logger Logger, memStorage *storage.MemStorage) {
 	for {
 		select {
 		case <-storeTicker.C:
-			if err := memStorage.SaveToFile(cfg.FilePath); err != nil {
-				logger.Errorln(err)
-			} else {
-				logger.Infoln("Data successfully saved")
-			}
+			trySaveStorage(cfg.FilePath, logger, memStorage)
 		case <-cancelChan:
+			trySaveStorage(cfg.FilePath, logger, memStorage)
 			return
 		}
+	}
+}
+
+func trySaveStorage(filePath string, logger Logger, memStorage *storage.MemStorage) {
+	if err := memStorage.SaveToFile(filePath); err != nil {
+		logger.Errorln(err)
+	} else {
+		logger.Infoln("Data successfully saved")
 	}
 }
 
