@@ -1,26 +1,40 @@
 package requester
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"net/http"
-	"strconv"
 
 	"github.com/go-resty/resty/v2"
 )
 
-type Requester struct {
-	host string
+type Logger interface {
+	Errorf(template string, args ...interface{})
+	Debugf(template string, args ...interface{})
 }
 
-func New(host string) *Requester {
+type Requester struct {
+	logger Logger
+	host   string
+}
+
+func New(host string, logger Logger) *Requester {
 	return &Requester{
-		host: host,
+		host:   host,
+		logger: logger,
 	}
 }
 
 func (r *Requester) SendCounterDelta(metricName string, delta int64) error {
-	resp, err := r.sendUpdate(protocol.Counter, metricName, strconv.FormatInt(delta, 10))
+	requestData := protocol.Metrics{
+		ID:    metricName,
+		MType: protocol.Counter,
+		Delta: &delta,
+	}
+	resp, err := r.sendUpdate(requestData)
 	if err != nil {
 		return fmt.Errorf("failed to send counter delta to %s: %w", r.host, err)
 	}
@@ -31,7 +45,12 @@ func (r *Requester) SendCounterDelta(metricName string, delta int64) error {
 }
 
 func (r *Requester) SendGauge(metricName string, value float64) error {
-	resp, err := r.sendUpdate(protocol.Gauge, metricName, strconv.FormatFloat(value, 'f', -1, 64))
+	requestData := protocol.Metrics{
+		ID:    metricName,
+		MType: protocol.Gauge,
+		Value: &value,
+	}
+	resp, err := r.sendUpdate(requestData)
 	if err != nil {
 		return fmt.Errorf("failed to send gauge to %s: %w", r.host, err)
 	}
@@ -41,17 +60,41 @@ func (r *Requester) SendGauge(metricName string, value float64) error {
 	return nil
 }
 
-func (r *Requester) sendUpdate(metricType string, metricKey string, metricValue string) (*resty.Response, error) {
-	url := "http://" + r.host + protocol.UpdateMetricValueURL
+func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, error) {
+	url := "http://" + r.host + protocol.UpdateMetricURL
+
+	rawData, err := json.Marshal(requestData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request data: %w", err)
+	}
+
+	var body bytes.Buffer
+
+	gzipwriter, err := gzip.NewWriterLevel(&body, gzip.BestSpeed)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip writer: %w", err)
+	}
+	defer func(gzipwriter *gzip.Writer) {
+		err := gzipwriter.Close()
+		if err != nil {
+			r.logger.Errorf("failed to close gzip writer: %s", err)
+		}
+	}(gzipwriter)
+
+	_, err = gzipwriter.Write(rawData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compress data: %w", err)
+	}
+	err = gzipwriter.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close gzip writer: %w", err)
+	}
 
 	resp, err := resty.New().
-		SetPathParams(
-			map[string]string{
-				protocol.TypeParam:  metricType,
-				protocol.KeyParam:   metricKey,
-				protocol.ValueParam: metricValue,
-			}).
 		R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(body.Bytes()).
 		Post(url)
 
 	if err != nil {

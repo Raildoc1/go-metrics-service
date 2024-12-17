@@ -1,28 +1,25 @@
-package getallmetrics
+package handlers
 
 import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 )
 
-type repository interface {
-	GetAll() map[string]any
+type GetAllMetricsHandler struct {
+	repository AllMetricsRepository
+	logger     Logger
 }
 
-type handler struct {
-	repository repository
-}
-
-func New(repository repository) http.Handler {
-	return &handler{
+func NewGetAllMetrics(repository AllMetricsRepository, logger Logger) *GetAllMetricsHandler {
+	return &GetAllMetricsHandler{
 		repository: repository,
+		logger:     logger,
 	}
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GetAllMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	data := h.repository.GetAll()
 	var buffer bytes.Buffer
 	for k, v := range data {
@@ -30,13 +27,14 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := template.New("data").Parse(`{{ .}}`)
 	if err != nil {
-		log.Println(err)
+		h.logger.Errorln(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Add("Content-Type", "text/html")
 	err = tmpl.Execute(w, buffer.String())
 	if err != nil {
-		log.Println(err)
+		h.logger.Errorln(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

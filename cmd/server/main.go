@@ -2,10 +2,11 @@ package main
 
 import (
 	"go-metrics-service/cmd/server/config"
+	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
-	"go-metrics-service/internal/server/data/storage/memory"
 	"log"
-	"net/http"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -13,10 +14,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	memStorage := memory.NewMemStorage()
-	handler := server.NewServer(memStorage)
-	err = http.ListenAndServe(cfg.ServerAddress, handler)
+	logger, err := logging.CreateZapLogger(!cfg.Production)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func(logger *zap.SugaredLogger) {
+		err := logger.Sync()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(logger)
+
+	server.Run(cfg.Server, logger)
 }
