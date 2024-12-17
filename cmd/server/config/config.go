@@ -20,9 +20,10 @@ const (
 )
 
 const (
-	DefaultFileStoragePath = "./data.gz"
-	DefaultStoreInterval   = 300
-	DefaultRestore         = true
+	DefaultFileStoragePath       = "./data.gz"
+	DefaultServerShutdownTimeout = 5
+	DefaultStoreInterval         = 300
+	DefaultRestore               = true
 )
 
 type Config struct {
@@ -83,10 +84,11 @@ func Load() (Config, error) {
 
 	return Config{
 		Server: server.Config{
-			ServerAddress: *serverAddress,
-			NeedRestore:   *needRestore,
-			FilePath:      *fileStoragePath,
-			StoreInterval: time.Duration(*storeInterval) * time.Second,
+			ServerAddress:   *serverAddress,
+			NeedRestore:     *needRestore,
+			FilePath:        *fileStoragePath,
+			StoreInterval:   time.Duration(*storeInterval) * time.Second,
+			ShutdownTimeout: DefaultServerShutdownTimeout * time.Second,
 		},
 	}, nil
 }

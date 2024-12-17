@@ -48,7 +48,7 @@ func Run(cfg Config, logger Logger) {
 
 	lifecycle(cfg, logger, memStorage)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Errorln(err)
@@ -87,8 +87,8 @@ func trySaveStorage(filePath string, logger Logger, memStorage *storage.MemStora
 	}
 }
 
-func createMux(storage repository.Storage, logger Logger) *chi.Mux {
-	rep := repository.New(storage)
+func createMux(strg repository.Storage, logger Logger) *chi.Mux {
+	rep := repository.New(strg)
 
 	counterLogic := counter.New(rep)
 	gaugeLogic := gauge.New(rep)
@@ -120,7 +120,7 @@ func createMux(storage repository.Storage, logger Logger) *chi.Mux {
 		Build()
 
 	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(storage, logger)).
+		NewBuilder(handlers.NewGetAllMetrics(strg, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
