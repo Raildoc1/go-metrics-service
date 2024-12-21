@@ -2,11 +2,13 @@ package requester
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/common/protocol"
 	"net/http"
+
+	"go.uber.org/zap"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -17,11 +19,11 @@ type Logger interface {
 }
 
 type Requester struct {
-	logger Logger
+	logger *zap.SugaredLogger
 	host   string
 }
 
-func New(host string, logger Logger) *Requester {
+func New(host string, logger *zap.SugaredLogger) *Requester {
 	return &Requester{
 		host:   host,
 		logger: logger,
@@ -68,26 +70,12 @@ func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, e
 		return nil, fmt.Errorf("failed to marshal request data: %w", err)
 	}
 
+	rawDataBuffer := bytes.NewBuffer(rawData)
 	var body bytes.Buffer
 
-	gzipwriter, err := gzip.NewWriterLevel(&body, gzip.BestSpeed)
+	err = compression.GzipCompress(rawDataBuffer, &body, r.logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gzip writer: %w", err)
-	}
-	defer func(gzipwriter *gzip.Writer) {
-		err := gzipwriter.Close()
-		if err != nil {
-			r.logger.Errorf("failed to close gzip writer: %s", err)
-		}
-	}(gzipwriter)
-
-	_, err = gzipwriter.Write(rawData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compress data: %w", err)
-	}
-	err = gzipwriter.Close()
-	if err != nil {
-		return nil, fmt.Errorf("failed to close gzip writer: %w", err)
+		return nil, fmt.Errorf("failed to compress request: %w", err)
 	}
 
 	resp, err := resty.New().

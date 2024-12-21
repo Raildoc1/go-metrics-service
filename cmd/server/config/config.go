@@ -11,19 +11,19 @@ import (
 )
 
 const (
-	FileStoragePathFlag = "f"
-	FileStoragePathEnv  = "FILE_STORAGE_PATH"
-	StoreIntervalFlag   = "i"
-	StoreIntervalEnv    = "STORE_INTERVAL"
-	RestoreFlag         = "r"
-	RestoreEnv          = "RESTORE"
+	fileStoragePathFlag = "f"
+	fileStoragePathEnv  = "FILE_STORAGE_PATH"
+	storeIntervalFlag   = "i"
+	storeIntervalEnv    = "STORE_INTERVAL"
+	restoreFlag         = "r"
+	restoreEnv          = "RESTORE"
 )
 
 const (
-	DefaultFileStoragePath       = "./data.gz"
-	DefaultServerShutdownTimeout = 5
-	DefaultStoreInterval         = 300
-	DefaultRestore               = true
+	defaultFileStoragePath       = "./data.gz"
+	defaultServerShutdownTimeout = 5
+	defaultStoreInterval         = 300
+	defaultRestore               = true
 )
 
 type Config struct {
@@ -39,20 +39,20 @@ func Load() (Config, error) {
 	)
 
 	fileStoragePath := flag.String(
-		FileStoragePathFlag,
-		DefaultFileStoragePath,
+		fileStoragePathFlag,
+		defaultFileStoragePath,
 		"File path",
 	)
 
 	storeInterval := flag.Int(
-		StoreIntervalFlag,
-		DefaultStoreInterval,
+		storeIntervalFlag,
+		defaultStoreInterval,
 		"Store interval in seconds",
 	)
 
 	needRestore := flag.Bool(
-		RestoreFlag,
-		DefaultRestore,
+		restoreFlag,
+		defaultRestore,
 		"Restore true/false",
 	)
 
@@ -62,22 +62,22 @@ func Load() (Config, error) {
 		*serverAddress = valStr
 	}
 
-	if valStr, ok := os.LookupEnv(FileStoragePathEnv); ok {
+	if valStr, ok := os.LookupEnv(fileStoragePathEnv); ok {
 		*fileStoragePath = valStr
 	}
 
-	if valStr, ok := os.LookupEnv(StoreIntervalEnv); ok {
+	if valStr, ok := os.LookupEnv(storeIntervalEnv); ok {
 		val, err := strconv.Atoi(valStr)
 		if err != nil {
-			return Config{}, fmt.Errorf("failed to parse '%s' env: %w", StoreIntervalEnv, err)
+			return Config{}, fmt.Errorf("failed to parse '%s' env: %w", storeIntervalEnv, err)
 		}
 		*storeInterval = val
 	}
 
-	if valStr, ok := os.LookupEnv(RestoreEnv); ok {
+	if valStr, ok := os.LookupEnv(restoreEnv); ok {
 		val, err := strconv.ParseBool(valStr)
 		if err != nil {
-			return Config{}, fmt.Errorf("failed to parse '%s' env: %w", RestoreEnv, err)
+			return Config{}, fmt.Errorf("failed to parse '%s' env: %w", restoreEnv, err)
 		}
 		*needRestore = val
 	}
@@ -88,7 +88,7 @@ func Load() (Config, error) {
 			NeedRestore:     *needRestore,
 			FilePath:        *fileStoragePath,
 			StoreInterval:   time.Duration(*storeInterval) * time.Second,
-			ShutdownTimeout: DefaultServerShutdownTimeout * time.Second,
+			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
 	}, nil
 }

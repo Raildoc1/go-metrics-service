@@ -21,7 +21,7 @@ func main() {
 	defer func(logger *zap.SugaredLogger) {
 		err := logger.Sync()
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	}(logger)
 

@@ -80,14 +80,14 @@ func (ms *MetricsSender) TrySendPollCount() bool {
 func (ms *MetricsSender) trySendGauge(key string, value float64) {
 	err := ms.requester.SendGauge(key, value)
 	if err != nil {
-		log.Printf("Errorln sending gauge '%s': %v", key, err)
+		log.Printf("Error sending gauge '%s': %v", key, err)
 	}
 }
 
 func (ms *MetricsSender) trySendCounterDelta(key string, value int64) bool {
 	err := ms.requester.SendCounterDelta(key, value)
 	if err != nil {
-		log.Printf("Errorln sending counter '%s': %v", key, err)
+		log.Printf("Error sending counter '%s': %v", key, err)
 	}
 	return err == nil
 }
