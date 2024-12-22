@@ -39,15 +39,15 @@ func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	err := h.updateValue(metricType, valueStr, key)
+	err := h.updateValue(metricType, key, valueStr, requestLogger)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrParsing):
-			requestLogger.Debug("parsing failed")
+			requestLogger.Debug("parsing failed", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, ErrNonExistentType):
-			requestLogger.Debug("non-existent type")
+			requestLogger.Debug("non-existent type", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
@@ -58,7 +58,12 @@ func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http
 	}
 }
 
-func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr string) error {
+func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr string, requestLogger *zap.Logger) error {
+	requestLogger.Debug("updating value",
+		zap.String("metricType", metricType),
+		zap.String("key", key),
+		zap.String("value", valueStr),
+	)
 	switch metricType {
 	case protocol.Gauge:
 		value, err := strconv.ParseFloat(valueStr, 64)

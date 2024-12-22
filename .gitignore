@@ -26,3 +26,12 @@ vendor/
 
 # Linter
 golangci-lint/
+
+# Logs
+*.log
+
+# MacOS
+.DS_Store
+
+# Local Storage
+localstorage/

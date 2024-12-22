@@ -1,24 +1,36 @@
 package logging
 
 import (
-	"fmt"
+	"os"
+
+	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
 )
 
-func CreateZapLogger(development bool) (*zap.Logger, error) {
-	var lgr *zap.Logger
-	var err error
+func CreateZapLogger(development bool, f *os.File) *zap.Logger {
+	var encoderConfig zapcore.EncoderConfig
 
 	if development {
-		lgr, err = zap.NewDevelopment()
+		encoderConfig = zap.NewDevelopmentEncoderConfig()
 	} else {
-		lgr, err = zap.NewProduction()
+		encoderConfig = zap.NewProductionEncoderConfig()
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("logger init: %w", err)
+	fileEncoder := zapcore.NewJSONEncoder(encoderConfig)
+
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+
+	level := zap.InfoLevel
+	if development {
+		level = zap.DebugLevel
 	}
 
-	return lgr, nil
+	core := zapcore.NewTee(
+		zapcore.NewCore(fileEncoder, zapcore.AddSync(f), level),
+		zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), level),
+	)
+
+	return zap.New(core)
 }

@@ -44,11 +44,11 @@ func (h *GetMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *ht
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrNotFound):
-			requestLogger.Debug("metric not found")
+			requestLogger.Debug("metric not found", zap.Error(err))
 			w.WriteHeader(http.StatusNotFound)
 			return
 		case errors.Is(err, data.ErrWrongType):
-			requestLogger.Debug("wrong type")
+			requestLogger.Debug("wrong type", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
