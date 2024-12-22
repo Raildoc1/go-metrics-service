@@ -4,20 +4,21 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"fmt"
-	"go-metrics-service/internal/server/data"
 	"os"
+
+	"go.uber.org/zap"
 )
 
 type MemStorage struct {
 	data   map[string]any
-	logger data.Logger
+	logger *zap.Logger
 }
 
 type serializableData struct {
 	Data map[string]any
 }
 
-func NewMemStorage(logger data.Logger) *MemStorage {
+func NewMemStorage(logger *zap.Logger) *MemStorage {
 	return &MemStorage{
 		data:   make(map[string]any),
 		logger: logger,
@@ -50,7 +51,7 @@ func (m *MemStorage) SaveToFile(filePath string) error {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			m.logger.Errorln(err)
+			m.logger.Error("failed to close file", zap.Error(err))
 		}
 	}(file)
 
@@ -58,7 +59,7 @@ func (m *MemStorage) SaveToFile(filePath string) error {
 	defer func(gzipWriter *gzip.Writer) {
 		err := gzipWriter.Close()
 		if err != nil {
-			m.logger.Errorln(err)
+			m.logger.Error("failed to close gzip writer", zap.Error(err))
 		}
 	}(gzipWriter)
 	if err != nil {
@@ -80,7 +81,7 @@ func (m *MemStorage) LoadFromFile(filePath string) error {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			m.logger.Errorln(err)
+			m.logger.Error("failed to close file", zap.Error(err))
 		}
 	}(file)
 
@@ -91,7 +92,7 @@ func (m *MemStorage) LoadFromFile(filePath string) error {
 	defer func(gzipReader *gzip.Reader) {
 		err := gzipReader.Close()
 		if err != nil {
-			m.logger.Errorln(err)
+			m.logger.Error("failed to close gzip reader", zap.Error(err))
 		}
 	}(gzipReader)
 

@@ -9,13 +9,11 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
 )
 
-type Logger interface {
-	metricsRequester.Logger
-}
-
-func Run(cfg config.Config, logger Logger) {
+func Run(cfg config.Config, logger *zap.Logger) {
 	collector := metricsCollector.New()
 	requester := metricsRequester.New(cfg.ServerAddress, logger)
 	sender := metricsSender.New(collector, requester)

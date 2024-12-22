@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GzipCompress(source io.Reader, target io.Writer, logger *zap.SugaredLogger) error {
+func GzipCompress(source io.Reader, target io.Writer, logger *zap.Logger) error {
 	gzipWriter, err := gzip.NewWriterLevel(target, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip writer: %w", err)
@@ -16,7 +16,7 @@ func GzipCompress(source io.Reader, target io.Writer, logger *zap.SugaredLogger)
 	defer func(gzipWriter *gzip.Writer) {
 		err := gzipWriter.Close()
 		if err != nil {
-			logger.Errorw("failed to close gzip writer", zap.Error(err))
+			logger.Error("failed to close gzip writer", zap.Error(err))
 		}
 	}(gzipWriter)
 

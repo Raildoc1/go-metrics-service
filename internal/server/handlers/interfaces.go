@@ -7,6 +7,7 @@ import "errors"
 var (
 	ErrNonExistentType = errors.New("non-existent type")
 	ErrWrongValueType  = errors.New("wrong value type")
+	ErrParsing         = errors.New("parsing error")
 )
 
 // Data.
@@ -33,11 +34,4 @@ type CounterLogic interface {
 
 type GaugeLogic interface {
 	Set(key string, value float64) error
-}
-
-// Utils.
-
-type Logger interface {
-	Errorln(args ...interface{})
-	Debugln(args ...interface{})
 }

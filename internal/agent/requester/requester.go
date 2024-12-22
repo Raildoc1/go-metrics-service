@@ -13,17 +13,12 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-type Logger interface {
-	Errorf(template string, args ...interface{})
-	Debugf(template string, args ...interface{})
-}
-
 type Requester struct {
-	logger *zap.SugaredLogger
+	logger *zap.Logger
 	host   string
 }
 
-func New(host string, logger *zap.SugaredLogger) *Requester {
+func New(host string, logger *zap.Logger) *Requester {
 	return &Requester{
 		host:   host,
 		logger: logger,

@@ -6,20 +6,21 @@ import (
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data"
-	"io"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type UpdateMetricValueHandler struct {
 	counterLogic CounterLogic
 	gaugeLogic   GaugeLogic
-	logger       Logger
+	logger       *zap.Logger
 }
 
 func NewUpdateMetric(
 	counterLogic CounterLogic,
 	gaugeLogic GaugeLogic,
-	logger Logger,
+	logger *zap.Logger,
 ) http.Handler {
 	return &UpdateMetricValueHandler{
 		counterLogic: counterLogic,
@@ -29,17 +30,13 @@ func NewUpdateMetric(
 }
 
 func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			h.logger.Errorln(err)
-		}
-	}(r.Body)
+	requestLogger := NewRequestLogger(h.logger, r)
+	defer closeBody(r.Body, requestLogger)
 
 	var requestData protocol.Metrics
 	jsonDecoder := json.NewDecoder(r.Body)
 	if err := jsonDecoder.Decode(&requestData); err != nil {
-		h.logger.Debugln(err)
+		requestLogger.Debug("failed to decode request", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -47,19 +44,19 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	if err := h.update(&requestData); err != nil {
 		switch {
 		case errors.Is(err, ErrWrongValueType):
-			h.logger.Debugln(err)
+			requestLogger.Debug("update failed", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, data.ErrWrongType):
-			h.logger.Debugln(err)
+			requestLogger.Debug("update failed", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, ErrNonExistentType):
-			h.logger.Debugln(err)
+			requestLogger.Debug("update failed", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
-			h.logger.Errorln(err)
+			requestLogger.Error("update failed", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

@@ -16,22 +16,18 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
-type Logger interface {
-	middleware.Logger
-	handlers.Logger
-}
-
-func Run(cfg Config, logger Logger) {
+func Run(cfg Config, logger *zap.Logger) {
 	memStorage := storage.NewMemStorage(logger)
 	if cfg.NeedRestore {
 		if _, err := os.Stat(cfg.FilePath); err == nil {
 			err := memStorage.LoadFromFile(cfg.FilePath)
 			if err != nil {
-				logger.Errorln(err)
+				logger.Error("failed to load from file", zap.Error(err))
 			} else {
-				logger.Infoln("Data successfully restored")
+				logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
 			}
 		}
 	}
@@ -41,7 +37,7 @@ func Run(cfg Config, logger Logger) {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Errorln(err)
+			logger.Error("failed to start server", zap.Error(err))
 		}
 	}()
 
@@ -50,11 +46,11 @@ func Run(cfg Config, logger Logger) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Errorln(err)
+		logger.Error("failed to gracefully shutdown", zap.Error(err))
 	}
 }
 
-func lifecycle(cfg Config, logger Logger, memStorage *storage.MemStorage) {
+func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
 	storeTicker := time.NewTicker(cfg.StoreInterval)
 
 	cancelChan := make(chan os.Signal, 1)
@@ -78,15 +74,15 @@ func lifecycle(cfg Config, logger Logger, memStorage *storage.MemStorage) {
 	}
 }
 
-func trySaveStorage(filePath string, logger Logger, memStorage *storage.MemStorage) {
+func trySaveStorage(filePath string, logger *zap.Logger, memStorage *storage.MemStorage) {
 	if err := memStorage.SaveToFile(filePath); err != nil {
-		logger.Errorln(err)
+		logger.Error("failed to save to file", zap.Error(err))
 	} else {
-		logger.Infoln("Data successfully saved")
+		logger.Info("successfully saved to file", zap.String("path", filePath))
 	}
 }
 
-func createMux(strg repository.Storage, logger Logger) *chi.Mux {
+func createMux(strg repository.Storage, logger *zap.Logger) *chi.Mux {
 	rep := repository.New(strg)
 
 	counterLogic := logic.NewCounter(rep, logger)

@@ -9,9 +9,3 @@ type CounterRepository interface {
 type GaugeRepository interface {
 	SetFloat64(key string, value float64) error
 }
-
-type Logger interface {
-	Infoln(args ...interface{})
-	Debugln(args ...interface{})
-	Errorln(args ...interface{})
-}

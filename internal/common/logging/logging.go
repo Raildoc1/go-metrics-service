@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func CreateZapLogger(development bool) (*zap.SugaredLogger, error) {
+func CreateZapLogger(development bool) (*zap.Logger, error) {
 	var lgr *zap.Logger
 	var err error
 
@@ -20,5 +20,5 @@ func CreateZapLogger(development bool) (*zap.SugaredLogger, error) {
 		return nil, fmt.Errorf("logger init: %w", err)
 	}
 
-	return lgr.Sugar(), nil
+	return lgr, nil
 }

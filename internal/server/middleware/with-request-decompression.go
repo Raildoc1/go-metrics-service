@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type compressReader struct {
@@ -37,8 +39,13 @@ func (r *compressReader) Close() error {
 	return r.decompressingReader.Close()
 }
 
-func withRequestDecompression(h http.Handler, logger Logger) http.Handler {
+func withRequestDecompression(h http.Handler, logger *zap.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqLogger := logger.With(
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+		)
+
 		if r.Header.Get("Content-Encoding") != "gzip" {
 			h.ServeHTTP(w, r)
 			return
@@ -47,7 +54,7 @@ func withRequestDecompression(h http.Handler, logger Logger) http.Handler {
 		decompressingReader, err := newCompressReader(r.Body)
 
 		if err != nil {
-			logger.Errorln("failed to decompress ", err)
+			reqLogger.Error("failed to decompress ", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

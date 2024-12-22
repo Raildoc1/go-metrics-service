@@ -6,20 +6,21 @@ import (
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data"
-	"io"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type GetMetricValueHandler struct {
 	gaugeRepository   GaugeRepository
 	counterRepository CounterRepository
-	logger            Logger
+	logger            *zap.Logger
 }
 
 func NewGetMetricValue(
 	gaugeRepository GaugeRepository,
 	counterRepository CounterRepository,
-	logger Logger,
+	logger *zap.Logger,
 ) *GetMetricValueHandler {
 	return &GetMetricValueHandler{
 		gaugeRepository:   gaugeRepository,
@@ -29,18 +30,14 @@ func NewGetMetricValue(
 }
 
 func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			h.logger.Errorln(err)
-		}
-	}(r.Body)
+	requestLogger := NewRequestLogger(h.logger, r)
+	defer closeBody(r.Body, requestLogger)
 
 	var requestData protocol.Metrics
 
 	jsonDecoder := json.NewDecoder(r.Body)
 	if err := jsonDecoder.Decode(&requestData); err != nil {
-		h.logger.Debugln(err)
+		requestLogger.Debug("failed to decode request", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -48,19 +45,19 @@ func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	if err := h.fill(&requestData); err != nil {
 		switch {
 		case errors.Is(err, data.ErrNotFound):
-			h.logger.Debugln(err)
+			requestLogger.Debug("failed to fill request data", zap.Error(err))
 			w.WriteHeader(http.StatusNotFound)
 			return
 		case errors.Is(err, data.ErrWrongType):
-			h.logger.Debugln(err)
+			requestLogger.Debug("failed to fill request data", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, ErrNonExistentType):
-			h.logger.Debugln(err)
+			requestLogger.Debug("failed to fill request data", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
-			h.logger.Errorln(err)
+			requestLogger.Error("failed to fill request data", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -68,14 +65,14 @@ func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	encoded, err := json.Marshal(requestData)
 	if err != nil {
-		h.logger.Errorln(err)
+		requestLogger.Error("failed to marsha json", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(encoded)
 	if err != nil {
-		h.logger.Errorln(err)
+		requestLogger.Error("failed to write response", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

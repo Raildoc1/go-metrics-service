@@ -3,10 +3,16 @@ package middleware
 import (
 	"net/http"
 	"time"
+
+	"go.uber.org/zap"
 )
 
-func withLogger(inner http.Handler, logger Logger) http.Handler {
+func withLogger(inner http.Handler, logger *zap.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqLogger := logger.With(
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+		)
 		start := time.Now()
 		lrw := loggingResponseWriter{
 			inner:  w,
@@ -14,12 +20,13 @@ func withLogger(inner http.Handler, logger Logger) http.Handler {
 			size:   0,
 		}
 		inner.ServeHTTP(&lrw, r)
-		logger.Infoln(
-			"method", r.Method,
-			"url", r.URL.String(),
-			"duration", time.Since(start),
-			"status", lrw.status,
-			"size", lrw.size,
+		reqLogger.Info(
+			"Request handled",
+			zap.String("method", r.Method),
+			zap.String("url", r.URL.String()),
+			zap.Duration("duration", time.Since(start)),
+			zap.Int("status", lrw.status),
+			zap.Int("size", lrw.size),
 		)
 	})
 }

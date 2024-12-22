@@ -2,14 +2,16 @@ package logic
 
 import (
 	"fmt"
+
+	"go.uber.org/zap"
 )
 
 type Counter struct {
 	repository CounterRepository
-	logger     Logger
+	logger     *zap.Logger
 }
 
-func NewCounter(repository CounterRepository, logger Logger) *Counter {
+func NewCounter(repository CounterRepository, logger *zap.Logger) *Counter {
 	return &Counter{
 		repository: repository,
 		logger:     logger,
@@ -17,7 +19,7 @@ func NewCounter(repository CounterRepository, logger Logger) *Counter {
 }
 
 func (c *Counter) Change(key string, delta int64) error {
-	c.logger.Debugln("changing counter ", key, " ", delta)
+	c.logger.Debug("changing", zap.String("key", key), zap.Int64("delta", delta))
 	var prevValue int64
 	if !c.repository.Has(key) {
 		prevValue = int64(0)

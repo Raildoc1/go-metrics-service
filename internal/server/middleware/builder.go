@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type Builder struct {
@@ -14,17 +16,17 @@ func NewBuilder(handler http.Handler) *Builder {
 	}
 }
 
-func (b *Builder) WithLogger(logger Logger) *Builder {
+func (b *Builder) WithLogger(logger *zap.Logger) *Builder {
 	b.httpHandler = withLogger(b.httpHandler, logger)
 	return b
 }
 
-func (b *Builder) WithRequestDecompression(logger Logger) *Builder {
+func (b *Builder) WithRequestDecompression(logger *zap.Logger) *Builder {
 	b.httpHandler = withRequestDecompression(b.httpHandler, logger)
 	return b
 }
 
-func (b *Builder) WithResponseCompression(logger Logger) *Builder {
+func (b *Builder) WithResponseCompression(logger *zap.Logger) *Builder {
 	b.httpHandler = withResponseCompression(b.httpHandler, logger)
 	return b
 }

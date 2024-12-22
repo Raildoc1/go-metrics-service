@@ -1,23 +1,26 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 type UpdateMetricPathParamsHandler struct {
 	counterLogic CounterLogic
 	gaugeLogic   GaugeLogic
-	logger       Logger
+	logger       *zap.Logger
 }
 
 func NewUpdateMetricPathParams(
 	counterLogic CounterLogic,
 	gaugeLogic GaugeLogic,
-	logger Logger,
+	logger *zap.Logger,
 ) *UpdateMetricPathParamsHandler {
 	return &UpdateMetricPathParamsHandler{
 		counterLogic: counterLogic,
@@ -27,49 +30,55 @@ func NewUpdateMetricPathParams(
 }
 
 func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestLogger := NewRequestLogger(h.logger, r)
+	defer closeBody(r.Body, requestLogger)
+	metricType := chi.URLParam(r, protocol.TypeParam)
 	key := chi.URLParam(r, protocol.KeyParam)
+	valueStr := chi.URLParam(r, protocol.ValueParam)
 	if len(key) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	metricType := chi.URLParam(r, protocol.TypeParam)
+	err := h.updateValue(metricType, valueStr, key)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrParsing):
+			requestLogger.Debug("parsing failed")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		case errors.Is(err, ErrNonExistentType):
+			requestLogger.Debug("non-existent type")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		default:
+			requestLogger.Error("unexpected error", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr string) error {
 	switch metricType {
 	case protocol.Gauge:
-		h.handleGauge(key, w, r)
+		value, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrParsing, err)
+		}
+		if err := h.gaugeLogic.Set(key, value); err != nil {
+			return fmt.Errorf("failed to set: %w", err)
+		}
+		return nil
 	case protocol.Counter:
-		h.handleCounter(key, w, r)
+		delta, err := strconv.ParseInt(valueStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrParsing, err)
+		}
+		if err := h.counterLogic.Change(key, delta); err != nil {
+			return fmt.Errorf("failed to set: %w", err)
+		}
+		return nil
 	default:
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		return fmt.Errorf("%w:  %s ", ErrNonExistentType, metricType)
 	}
-}
-
-func (h *UpdateMetricPathParamsHandler) handleGauge(key string, w http.ResponseWriter, r *http.Request) {
-	valueStr := chi.URLParam(r, protocol.ValueParam)
-	value, err := strconv.ParseFloat(valueStr, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if err := h.gaugeLogic.Set(key, value); err != nil {
-		h.logger.Errorln(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-}
-
-func (h *UpdateMetricPathParamsHandler) handleCounter(key string, w http.ResponseWriter, r *http.Request) {
-	deltaStr := chi.URLParam(r, protocol.ValueParam)
-	delta, err := strconv.ParseInt(deltaStr, 10, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if err := h.counterLogic.Change(key, delta); err != nil {
-		h.logger.Errorln(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
 }
