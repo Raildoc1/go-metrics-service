@@ -16,7 +16,7 @@ import (
 func Run(cfg config.Config, logger *zap.Logger) {
 	collector := metricsCollector.New()
 	requester := metricsRequester.New(cfg.ServerAddress, logger)
-	sender := metricsSender.New(collector, requester)
+	sender := metricsSender.New(collector, requester, logger)
 
 	lifecycle(cfg, collector, sender)
 }

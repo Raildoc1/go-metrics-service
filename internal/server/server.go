@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -75,6 +76,14 @@ func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
 }
 
 func trySaveStorage(filePath string, logger *zap.Logger, memStorage *storage.MemStorage) {
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			logger.Error("failed to create directory", zap.Error(err))
+			return
+		}
+	}
 	if err := memStorage.SaveToFile(filePath); err != nil {
 		logger.Error("failed to save to file", zap.Error(err))
 	} else {

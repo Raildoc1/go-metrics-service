@@ -20,7 +20,7 @@ const (
 )
 
 const (
-	defaultFileStoragePath       = "./data.gz"
+	defaultFileStoragePath       = "./localstorage/data.gz"
 	defaultServerShutdownTimeout = 5
 	defaultStoreInterval         = 300
 	defaultRestore               = true

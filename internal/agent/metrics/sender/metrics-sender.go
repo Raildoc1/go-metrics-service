@@ -1,9 +1,10 @@
 package sender
 
 import (
-	"log"
 	"math/rand"
 	"runtime"
+
+	"go.uber.org/zap"
 )
 
 type requester interface {
@@ -20,15 +21,18 @@ type metricsStorage interface {
 type MetricsSender struct {
 	storage   metricsStorage
 	requester requester
+	logger    *zap.Logger
 }
 
 func New(
 	metricsStorage metricsStorage,
 	requester requester,
+	logger *zap.Logger,
 ) *MetricsSender {
 	return &MetricsSender{
 		storage:   metricsStorage,
 		requester: requester,
+		logger:    logger,
 	}
 }
 
@@ -80,14 +84,22 @@ func (ms *MetricsSender) TrySendPollCount() bool {
 func (ms *MetricsSender) trySendGauge(key string, value float64) {
 	err := ms.requester.SendGauge(key, value)
 	if err != nil {
-		log.Printf("Error sending gauge '%s': %v", key, err)
+		ms.logger.Error("Failed to send gauge",
+			zap.String("key", key),
+			zap.Float64("value", value),
+			zap.Error(err),
+		)
 	}
 }
 
 func (ms *MetricsSender) trySendCounterDelta(key string, value int64) bool {
 	err := ms.requester.SendCounterDelta(key, value)
 	if err != nil {
-		log.Printf("Error sending counter '%s': %v", key, err)
+		ms.logger.Error("Failed to send counter",
+			zap.String("key", key),
+			zap.Int64("delta", value),
+			zap.Error(err),
+		)
 	}
 	return err == nil
 }
