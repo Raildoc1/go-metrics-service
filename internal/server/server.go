@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -80,30 +79,16 @@ func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
 	for {
 		select {
 		case <-storeTicker.C:
-			trySaveStorage(cfg.FilePath, logger, memStorage)
+			trySaveStorage(memStorage, cfg.FilePath, logger)
 		case <-cancelChan:
-			trySaveStorage(cfg.FilePath, logger, memStorage)
+			trySaveStorage(memStorage, cfg.FilePath, logger)
 			return
 		}
 	}
 }
 
-func trySaveStorage(filePath string, logger *zap.Logger, memStorage *storage.MemStorage) {
-	dir := filepath.Dir(filePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		const dirPerm = 0o700
-		err = os.MkdirAll(dir, dirPerm)
-		if err != nil {
-			logger.Error("failed to create directory", zap.Error(err))
-			return
-		}
-	}
-	file, err := os.Create(filePath)
-	if err != nil {
-		logger.Error("failed to open file", zap.Error(err))
-		return
-	}
-	if err := memStorage.SaveTo(file); err != nil {
+func trySaveStorage(memStorage *storage.MemStorage, filePath string, logger *zap.Logger) {
+	if err := storage.SaveMemStorageToFile(memStorage, filePath, logger); err != nil {
 		logger.Error("failed to save to file", zap.Error(err))
 	} else {
 		logger.Info("successfully saved to file", zap.String("path", filePath))

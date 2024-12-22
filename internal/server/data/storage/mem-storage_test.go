@@ -93,20 +93,12 @@ func TestFileSaveLoad(t *testing.T) {
 	}
 }
 
-//nolint:wrapcheck // wrapping unnecessary
 func createAndSaveStorage(data map[string]interface{}, filePath string) error {
-	ms1 := NewMemStorage(zap.NewNop())
+	ms := NewMemStorage(zap.NewNop())
 	for k, v := range data {
-		ms1.Set(k, v)
+		ms.Set(k, v)
 	}
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		_ = file.Close()
-	}(file)
-	return ms1.SaveTo(file)
+	return SaveMemStorageToFile(ms, filePath, zap.NewNop())
 }
 
 //nolint:wrapcheck // wrapping unnecessary

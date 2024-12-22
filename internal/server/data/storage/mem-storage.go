@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"go-metrics-service/internal/common/compression"
 	"io"
+	"os"
+	"path/filepath"
 
 	"go.uber.org/zap"
 )
@@ -75,6 +77,31 @@ func (m *MemStorage) SaveTo(writer io.Writer) error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed not compress data: %w", err)
+	}
+	return nil
+}
+
+func SaveMemStorageToFile(memStorage *MemStorage, filePath string, logger *zap.Logger) error {
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		const dirPerm = 0o700
+		err = os.MkdirAll(dir, dirPerm)
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+	}
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Error("failed to close file", zap.Error(err))
+		}
+	}(file)
+	if err := memStorage.SaveTo(file); err != nil {
+		return fmt.Errorf("failed to save file: %w", err)
 	}
 	return nil
 }
