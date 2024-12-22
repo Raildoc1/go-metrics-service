@@ -72,22 +72,55 @@ func TestFileSaveLoad(t *testing.T) {
 		"test_key_6": "Hello, World!",
 		"test_key_7": "",
 	}
-	ms1 := NewMemStorage(zap.NewNop())
-	for k, v := range testData {
-		ms1.Set(k, v)
-	}
-	err := ms1.SaveToFile("test.gz")
+
+	const filePath = "test.gz"
+
 	defer func() {
-		_ = os.Remove("test.gz")
+		_ = os.Remove(filePath)
 	}()
+
+	err := createAndSaveStorage(testData, filePath)
 	require.NoError(t, err)
-	ms2 := NewMemStorage(zap.NewNop())
-	err = ms2.LoadFromFile("test.gz")
+
+	ms, err := loadFromFile(filePath)
 	require.NoError(t, err)
+
 	for k, v := range testData {
-		val, ok := ms2.Get(k)
+		val, ok := ms.Get(k)
 		require.Equal(t, true, ok)
 		assert.Equal(t, v, val)
 		assert.Equal(t, reflect.TypeOf(v), reflect.TypeOf(val))
 	}
+}
+
+//nolint:wrapcheck // wrapping unnecessary
+func createAndSaveStorage(data map[string]interface{}, filePath string) error {
+	ms1 := NewMemStorage(zap.NewNop())
+	for k, v := range data {
+		ms1.Set(k, v)
+	}
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+	return ms1.SaveTo(file)
+}
+
+//nolint:wrapcheck // wrapping unnecessary
+func loadFromFile(filePath string) (*MemStorage, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+	ms, err := LoadFrom(file, zap.NewNop())
+	if err != nil {
+		return nil, err
+	}
+	return ms, nil
 }

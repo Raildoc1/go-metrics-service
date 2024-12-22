@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repository"
 	"go-metrics-service/internal/server/data/storage"
@@ -21,16 +22,10 @@ import (
 )
 
 func Run(cfg Config, logger *zap.Logger) {
-	memStorage := storage.NewMemStorage(logger)
-	if cfg.NeedRestore {
-		if _, err := os.Stat(cfg.FilePath); err == nil {
-			err := memStorage.LoadFromFile(cfg.FilePath)
-			if err != nil {
-				logger.Error("failed to load from file", zap.Error(err))
-			} else {
-				logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
-			}
-		}
+	memStorage, err := createMemStorage(cfg, logger)
+	if err != nil {
+		logger.Error("failed to load from file", zap.Error(err))
+		return
 	}
 
 	srv := &http.Server{Addr: cfg.ServerAddress}
@@ -49,6 +44,24 @@ func Run(cfg Config, logger *zap.Logger) {
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("failed to gracefully shutdown", zap.Error(err))
 	}
+}
+
+func createMemStorage(cfg Config, logger *zap.Logger) (*storage.MemStorage, error) {
+	if cfg.NeedRestore {
+		if _, err := os.Stat(cfg.FilePath); err == nil {
+			file, err := os.Open(cfg.FilePath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open file: %w", err)
+			}
+			ms, err := storage.LoadFrom(file, logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load from file: %w", err)
+			}
+			logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
+			return ms, nil
+		}
+	}
+	return storage.NewMemStorage(logger), nil
 }
 
 func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
@@ -85,7 +98,12 @@ func trySaveStorage(filePath string, logger *zap.Logger, memStorage *storage.Mem
 			return
 		}
 	}
-	if err := memStorage.SaveToFile(filePath); err != nil {
+	file, err := os.Create(filePath)
+	if err != nil {
+		logger.Error("failed to open file", zap.Error(err))
+		return
+	}
+	if err := memStorage.SaveTo(file); err != nil {
 		logger.Error("failed to save to file", zap.Error(err))
 	} else {
 		logger.Info("successfully saved to file", zap.String("path", filePath))

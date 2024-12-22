@@ -4,7 +4,8 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"fmt"
-	"os"
+	"go-metrics-service/internal/common/compression"
+	"io"
 
 	"go.uber.org/zap"
 )
@@ -25,6 +26,25 @@ func NewMemStorage(logger *zap.Logger) *MemStorage {
 	}
 }
 
+func LoadFrom(reader io.Reader, logger *zap.Logger) (*MemStorage, error) {
+	var readData serializableData
+	err := compression.GzipDecompress(
+		&readData,
+		func(reader io.Reader) compression.Decoder {
+			return gob.NewDecoder(reader)
+		},
+		reader,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress data: %w", err)
+	}
+	return &MemStorage{
+		data:   readData.Data,
+		logger: logger,
+	}, nil
+}
+
 func (m *MemStorage) Set(key string, value any) {
 	m.data[key] = value
 }
@@ -43,66 +63,18 @@ func (m *MemStorage) GetAll() map[string]any {
 	return m.data
 }
 
-func (m *MemStorage) SaveToFile(filePath string) error {
-	file, err := os.Create(filePath)
+func (m *MemStorage) SaveTo(writer io.Writer) error {
+	err := compression.GzipCompress(
+		serializableData{Data: m.data},
+		func(writer io.Writer) compression.Encoder {
+			return gob.NewEncoder(writer)
+		},
+		writer,
+		gzip.BestCompression,
+		m.logger,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
+		return fmt.Errorf("failed not compress data: %w", err)
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			m.logger.Error("failed to close file", zap.Error(err))
-		}
-	}(file)
-
-	gzipWriter, err := gzip.NewWriterLevel(file, gzip.BestCompression)
-	defer func(gzipWriter *gzip.Writer) {
-		err := gzipWriter.Close()
-		if err != nil {
-			m.logger.Error("failed to close gzip writer", zap.Error(err))
-		}
-	}(gzipWriter)
-	if err != nil {
-		return fmt.Errorf("failed to create gzip writer: %w", err)
-	}
-
-	err = gob.NewEncoder(gzipWriter).Encode(serializableData{Data: m.data})
-	if err != nil {
-		return fmt.Errorf("failed to encode data: %w", err)
-	}
-	return nil
-}
-
-func (m *MemStorage) LoadFromFile(filePath string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			m.logger.Error("failed to close file", zap.Error(err))
-		}
-	}(file)
-
-	gzipReader, err := gzip.NewReader(file)
-	if err != nil {
-		return fmt.Errorf("failed to create gzip reader: %w", err)
-	}
-	defer func(gzipReader *gzip.Reader) {
-		err := gzipReader.Close()
-		if err != nil {
-			m.logger.Error("failed to close gzip reader", zap.Error(err))
-		}
-	}(gzipReader)
-
-	var readData serializableData
-	gobDecoder := gob.NewDecoder(gzipReader)
-	err = gobDecoder.Decode(&readData)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal data: %w", err)
-	}
-
-	m.data = readData.Data
 	return nil
 }

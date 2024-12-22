@@ -2,10 +2,12 @@ package requester
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/common/protocol"
+	"io"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -60,15 +62,18 @@ func (r *Requester) SendGauge(metricName string, value float64) error {
 func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, error) {
 	url := "http://" + r.host + protocol.UpdateMetricURL
 
-	rawData, err := json.Marshal(requestData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request data: %w", err)
-	}
-
-	rawDataBuffer := bytes.NewBuffer(rawData)
 	var body bytes.Buffer
 
-	err = compression.GzipCompress(rawDataBuffer, &body, r.logger)
+	err := compression.GzipCompress(
+		requestData,
+		func(writer io.Writer) compression.Encoder {
+			return json.NewEncoder(writer)
+		},
+		&body,
+		gzip.BestSpeed,
+		r.logger,
+	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to compress request: %w", err)
 	}
