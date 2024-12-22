@@ -42,22 +42,23 @@ func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	const errFill = "failed to fill request data"
 	if err := h.fill(&requestData); err != nil {
 		switch {
 		case errors.Is(err, data.ErrNotFound):
-			requestLogger.Debug("failed to fill request data", zap.Error(err))
+			requestLogger.Debug(errFill, zap.Error(err))
 			w.WriteHeader(http.StatusNotFound)
 			return
 		case errors.Is(err, data.ErrWrongType):
-			requestLogger.Debug("failed to fill request data", zap.Error(err))
+			requestLogger.Debug(errFill, zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, ErrNonExistentType):
-			requestLogger.Debug("failed to fill request data", zap.Error(err))
+			requestLogger.Debug(errFill, zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
-			requestLogger.Error("failed to fill request data", zap.Error(err))
+			requestLogger.Error(errFill, zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -93,7 +94,7 @@ func (h *GetMetricValueHandler) fill(requestData *protocol.Metrics) error {
 		}
 		requestData.Delta = &value
 	default:
-		return fmt.Errorf("%w:  %s ", ErrNonExistentType, requestData.MType)
+		return ErrNonExistentType
 	}
 	return nil
 }

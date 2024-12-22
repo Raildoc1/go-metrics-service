@@ -84,6 +84,6 @@ func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr st
 		}
 		return nil
 	default:
-		return fmt.Errorf("%w:  %s ", ErrNonExistentType, metricType)
+		return ErrNonExistentType
 	}
 }

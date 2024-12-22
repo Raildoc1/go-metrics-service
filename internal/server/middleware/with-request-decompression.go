@@ -3,6 +3,7 @@ package middleware
 import (
 	"compress/gzip"
 	"fmt"
+	"go-metrics-service/internal/server/handlers"
 	"io"
 	"net/http"
 
@@ -41,10 +42,7 @@ func (r *compressReader) Close() error {
 
 func withRequestDecompression(h http.Handler, logger *zap.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqLogger := logger.With(
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-		)
+		requestLogger := handlers.NewRequestLogger(logger, r)
 
 		if r.Header.Get("Content-Encoding") != "gzip" {
 			h.ServeHTTP(w, r)
@@ -54,7 +52,7 @@ func withRequestDecompression(h http.Handler, logger *zap.Logger) http.Handler {
 		decompressingReader, err := newCompressReader(r.Body)
 
 		if err != nil {
-			reqLogger.Error("failed to decompress ", zap.Error(err))
+			requestLogger.Error("failed to decompress ", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

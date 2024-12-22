@@ -11,7 +11,7 @@ import (
 )
 
 func TestKeysCollision(t *testing.T) {
-	ms := storage.NewMemStorage(zap.NewNop().Sugar())
+	ms := storage.NewMemStorage(zap.NewNop())
 
 	rep := New(ms)
 

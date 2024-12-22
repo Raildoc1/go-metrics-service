@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"go-metrics-service/internal/server/handlers"
 	"net/http"
 	"time"
 
@@ -9,10 +10,7 @@ import (
 
 func withLogger(inner http.Handler, logger *zap.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqLogger := logger.With(
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-		)
+		requestLogger := handlers.NewRequestLogger(logger, r)
 		start := time.Now()
 		lrw := loggingResponseWriter{
 			inner:  w,
@@ -20,10 +18,8 @@ func withLogger(inner http.Handler, logger *zap.Logger) http.Handler {
 			size:   0,
 		}
 		inner.ServeHTTP(&lrw, r)
-		reqLogger.Info(
+		requestLogger.Info(
 			"Request handled",
-			zap.String("method", r.Method),
-			zap.String("url", r.URL.String()),
 			zap.Duration("duration", time.Since(start)),
 			zap.Int("status", lrw.status),
 			zap.Int("size", lrw.size),

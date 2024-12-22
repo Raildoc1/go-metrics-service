@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
+	"go-metrics-service/internal/server/handlers"
 	"io"
 	"net/http"
 	"strings"
@@ -23,27 +24,24 @@ func (w *gzipWriter) Write(b []byte) (int, error) {
 
 func withResponseCompression(h http.Handler, logger *zap.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqLogger := logger.With(
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-		)
+		requestLogger := handlers.NewRequestLogger(logger, r)
 
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			reqLogger.Debug("compression missed")
+			requestLogger.Debug("compression missed")
 			h.ServeHTTP(w, r)
 			return
 		}
 
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			reqLogger.Error("Failed to create gzip writer", zap.Error(err))
+			requestLogger.Error("Failed to create gzip writer", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer func(gz *gzip.Writer) {
 			err := gz.Close()
 			if err != nil {
-				reqLogger.Error("Failed to close gzip writer", zap.Error(err))
+				requestLogger.Error("Failed to close gzip writer", zap.Error(err))
 				return
 			}
 		}(gz)
@@ -52,7 +50,7 @@ func withResponseCompression(h http.Handler, logger *zap.Logger) http.Handler {
 		wrappedWriter := gzipWriter{ResponseWriter: w, Writer: gz}
 		h.ServeHTTP(&wrappedWriter, r)
 
-		reqLogger.Debug("request compressed",
+		requestLogger.Debug("request compressed",
 			zap.Int("Uncompressed size", wrappedWriter.uncompressedSize),
 		)
 	})

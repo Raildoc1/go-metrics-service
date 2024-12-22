@@ -45,7 +45,7 @@ func TestGetExistingValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ms := NewMemStorage(zap.NewNop().Sugar())
+			ms := NewMemStorage(zap.NewNop())
 
 			ms.Set("key", test.value)
 			val, ok := ms.Get("key")
@@ -57,7 +57,7 @@ func TestGetExistingValue(t *testing.T) {
 }
 
 func TestGetNonExistingValue(t *testing.T) {
-	ms := NewMemStorage(zap.NewNop().Sugar())
+	ms := NewMemStorage(zap.NewNop())
 	_, ok := ms.Get("non_existing_key")
 	require.False(t, ok)
 }
@@ -72,7 +72,7 @@ func TestFileSaveLoad(t *testing.T) {
 		"test_key_6": "Hello, World!",
 		"test_key_7": "",
 	}
-	ms1 := NewMemStorage(zap.NewNop().Sugar())
+	ms1 := NewMemStorage(zap.NewNop())
 	for k, v := range testData {
 		ms1.Set(k, v)
 	}
@@ -81,7 +81,7 @@ func TestFileSaveLoad(t *testing.T) {
 		_ = os.Remove("test.gz")
 	}()
 	require.NoError(t, err)
-	ms2 := NewMemStorage(zap.NewNop().Sugar())
+	ms2 := NewMemStorage(zap.NewNop())
 	err = ms2.LoadFromFile("test.gz")
 	require.NoError(t, err)
 	for k, v := range testData {

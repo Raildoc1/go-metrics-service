@@ -41,22 +41,23 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	const errUpdate = "update failed"
 	if err := h.update(&requestData); err != nil {
 		switch {
 		case errors.Is(err, ErrWrongValueType):
-			requestLogger.Debug("update failed", zap.Error(err))
+			requestLogger.Debug(errUpdate, zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, data.ErrWrongType):
-			requestLogger.Debug("update failed", zap.Error(err))
+			requestLogger.Debug(errUpdate, zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, ErrNonExistentType):
-			requestLogger.Debug("update failed", zap.Error(err))
+			requestLogger.Debug(errUpdate, zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		default:
-			requestLogger.Error("update failed", zap.Error(err))
+			requestLogger.Error(errUpdate, zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -80,7 +81,7 @@ func (h *UpdateMetricValueHandler) update(requestData *protocol.Metrics) error {
 			return fmt.Errorf("change counter: %w", err)
 		}
 	default:
-		return fmt.Errorf("%w:  %s ", ErrNonExistentType, requestData.MType)
+		return ErrNonExistentType
 	}
 	return nil
 }

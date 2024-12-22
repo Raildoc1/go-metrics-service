@@ -78,7 +78,8 @@ func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
 func trySaveStorage(filePath string, logger *zap.Logger, memStorage *storage.MemStorage) {
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
+		const dirPerm = 0o700
+		err = os.MkdirAll(dir, dirPerm)
 		if err != nil {
 			logger.Error("failed to create directory", zap.Error(err))
 			return

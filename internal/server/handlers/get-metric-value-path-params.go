@@ -82,6 +82,6 @@ func (h *GetMetricValuePathParamsHandler) getValue(metricType, key string) (stri
 		}
 		return strconv.FormatInt(value, 10), nil
 	default:
-		return "", fmt.Errorf("%w:  %s ", ErrNonExistentType, metricType)
+		return "", ErrNonExistentType
 	}
 }
