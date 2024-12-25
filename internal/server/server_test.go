@@ -6,7 +6,6 @@ import (
 	"go-metrics-service/internal/server/data/storage"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,8 +15,7 @@ import (
 )
 
 func setupServer() *httptest.Server {
-	logFile, _ := os.Create("./test.log")
-	logger := logging.CreateZapLogger(true, logFile)
+	logger := logging.CreateZapLogger(true)
 	memStorage := storage.NewMemStorage(logger)
 	mux := createMux(memStorage, logger)
 	return httptest.NewServer(mux)

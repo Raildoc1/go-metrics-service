@@ -5,7 +5,6 @@ import (
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
 	"log"
-	"os"
 
 	"go.uber.org/zap"
 )
@@ -15,17 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logFile, err := os.Create("./server.log")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func(logFile *os.File) {
-		err := logFile.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(logFile)
-	logger := logging.CreateZapLogger(!cfg.Production, logFile)
+	logger := logging.CreateZapLogger(!cfg.Production)
 	defer func(logger *zap.Logger) {
 		err := logger.Sync()
 		if err != nil {
