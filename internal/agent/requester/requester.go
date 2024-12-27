@@ -1,26 +1,39 @@
 package requester
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
+	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/common/protocol"
+	"io"
 	"net/http"
-	"strconv"
+
+	"go.uber.org/zap"
 
 	"github.com/go-resty/resty/v2"
 )
 
 type Requester struct {
-	host string
+	logger *zap.Logger
+	host   string
 }
 
-func New(host string) *Requester {
+func New(host string, logger *zap.Logger) *Requester {
 	return &Requester{
-		host: host,
+		host:   host,
+		logger: logger,
 	}
 }
 
 func (r *Requester) SendCounterDelta(metricName string, delta int64) error {
-	resp, err := r.sendUpdate(protocol.Counter, metricName, strconv.FormatInt(delta, 10))
+	requestData := protocol.Metrics{
+		ID:    metricName,
+		MType: protocol.Counter,
+		Delta: &delta,
+	}
+	resp, err := r.sendUpdate(requestData)
 	if err != nil {
 		return fmt.Errorf("failed to send counter delta to %s: %w", r.host, err)
 	}
@@ -31,7 +44,12 @@ func (r *Requester) SendCounterDelta(metricName string, delta int64) error {
 }
 
 func (r *Requester) SendGauge(metricName string, value float64) error {
-	resp, err := r.sendUpdate(protocol.Gauge, metricName, strconv.FormatFloat(value, 'f', -1, 64))
+	requestData := protocol.Metrics{
+		ID:    metricName,
+		MType: protocol.Gauge,
+		Value: &value,
+	}
+	resp, err := r.sendUpdate(requestData)
 	if err != nil {
 		return fmt.Errorf("failed to send gauge to %s: %w", r.host, err)
 	}
@@ -41,17 +59,30 @@ func (r *Requester) SendGauge(metricName string, value float64) error {
 	return nil
 }
 
-func (r *Requester) sendUpdate(metricType string, metricKey string, metricValue string) (*resty.Response, error) {
-	url := "http://" + r.host + protocol.UpdateMetricValueURL
+func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, error) {
+	url := "http://" + r.host + protocol.UpdateMetricURL
+
+	var body bytes.Buffer
+
+	err := compression.GzipCompress(
+		requestData,
+		func(writer io.Writer) compression.Encoder {
+			return json.NewEncoder(writer)
+		},
+		&body,
+		gzip.BestSpeed,
+		r.logger,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to compress request: %w", err)
+	}
 
 	resp, err := resty.New().
-		SetPathParams(
-			map[string]string{
-				protocol.TypeParam:  metricType,
-				protocol.KeyParam:   metricKey,
-				protocol.ValueParam: metricValue,
-			}).
 		R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(body.Bytes()).
 		Post(url)
 
 	if err != nil {

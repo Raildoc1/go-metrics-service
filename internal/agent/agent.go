@@ -9,16 +9,16 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
 )
 
-func Run(cfg config.Config) error {
+func Run(cfg config.Config, logger *zap.Logger) {
 	collector := metricsCollector.New()
-	requester := metricsRequester.New(cfg.ServerAddress)
-	sender := metricsSender.New(collector, requester)
+	requester := metricsRequester.New(cfg.ServerAddress, logger)
+	sender := metricsSender.New(collector, requester, logger)
 
 	lifecycle(cfg, collector, sender)
-
-	return nil
 }
 
 func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {

@@ -1,26 +1,25 @@
-package counter
+package logic
 
 import (
 	"fmt"
+
+	"go.uber.org/zap"
 )
 
-type repository interface {
-	Has(key string) bool
-	GetInt64(key string) (value int64, err error)
-	SetInt64(key string, value int64) error
-}
-
 type Counter struct {
-	repository repository
+	repository CounterRepository
+	logger     *zap.Logger
 }
 
-func New(repository repository) *Counter {
+func NewCounter(repository CounterRepository, logger *zap.Logger) *Counter {
 	return &Counter{
 		repository: repository,
+		logger:     logger,
 	}
 }
 
 func (c *Counter) Change(key string, delta int64) error {
+	c.logger.Debug("changing", zap.String("key", key), zap.Int64("delta", delta))
 	var prevValue int64
 	if !c.repository.Has(key) {
 		prevValue = int64(0)
