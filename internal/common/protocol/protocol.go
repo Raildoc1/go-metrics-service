@@ -16,6 +16,7 @@ const (
 	GetMetricURL              = "/value/"
 	UpdateMetricPathParamsURL = "/update/{" + TypeParam + "}/{" + KeyParam + "}/{" + ValueParam + "}"
 	GetMetricPathParamsURL    = "/value/{" + TypeParam + "}/{" + KeyParam + "}"
+	PingURL                   = "/ping"
 	GetAllMetricsURL          = "/"
 )
 

@@ -7,6 +7,7 @@ import (
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/data/repository"
 	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
@@ -20,7 +21,17 @@ import (
 	"go.uber.org/zap"
 )
 
+type Database interface {
+	handlers.Database
+}
+
 func Run(cfg Config, logger *zap.Logger) {
+	db, err := database.New(cfg.Database)
+	if err != nil {
+		logger.Error("failed to create database", zap.Error(err))
+		return
+	}
+
 	memStorage, err := createMemStorage(cfg, logger)
 	if err != nil {
 		logger.Error("failed to load from file", zap.Error(err))
@@ -28,7 +39,7 @@ func Run(cfg Config, logger *zap.Logger) {
 	}
 
 	srv := &http.Server{Addr: cfg.ServerAddress}
-	srv.Handler = createMux(memStorage, logger)
+	srv.Handler = createMux(memStorage, db, logger)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -95,7 +106,7 @@ func trySaveStorage(memStorage *storage.MemStorage, filePath string, logger *zap
 	}
 }
 
-func createMux(strg repository.Storage, logger *zap.Logger) *chi.Mux {
+func createMux(strg repository.Storage, db Database, logger *zap.Logger) *chi.Mux {
 	rep := repository.New(strg)
 
 	counterLogic := logic.NewCounter(rep, logger)
@@ -134,6 +145,11 @@ func createMux(strg repository.Storage, logger *zap.Logger) *chi.Mux {
 		WithResponseCompression(logger).
 		Build()
 
+	pingHandler := middleware.
+		NewBuilder(handlers.NewPing(db, logger)).
+		WithLogger(logger).
+		Build()
+
 	router := chi.NewRouter()
 
 	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
@@ -141,6 +157,7 @@ func createMux(strg repository.Storage, logger *zap.Logger) *chi.Mux {
 	router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
 	router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
 	router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
+	router.Get(protocol.PingURL, pingHandler.ServeHTTP)
 
 	return router
 }

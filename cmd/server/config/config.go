@@ -5,18 +5,21 @@ import (
 	"fmt"
 	common "go-metrics-service/cmd/common/config"
 	"go-metrics-service/internal/server"
+	"go-metrics-service/internal/server/database"
 	"os"
 	"strconv"
 	"time"
 )
 
 const (
-	fileStoragePathFlag = "f"
-	fileStoragePathEnv  = "FILE_STORAGE_PATH"
-	storeIntervalFlag   = "i"
-	storeIntervalEnv    = "STORE_INTERVAL"
-	restoreFlag         = "r"
-	restoreEnv          = "RESTORE"
+	fileStoragePathFlag    = "f"
+	fileStoragePathEnv     = "FILE_STORAGE_PATH"
+	storeIntervalFlag      = "i"
+	storeIntervalEnv       = "STORE_INTERVAL"
+	restoreFlag            = "r"
+	restoreEnv             = "RESTORE"
+	dbConnectionStringFlag = "d"
+	dbConnectionStringEnv  = "DATABASE_DSN"
 )
 
 const (
@@ -56,6 +59,12 @@ func Load() (Config, error) {
 		"Restore true/false",
 	)
 
+	dbConnectionString := flag.String(
+		dbConnectionStringFlag,
+		"",
+		"Database connection string",
+	)
+
 	flag.Parse()
 
 	if valStr, ok := os.LookupEnv(common.ServerAddressEnv); ok {
@@ -82,6 +91,10 @@ func Load() (Config, error) {
 		*needRestore = val
 	}
 
+	if valStr, ok := os.LookupEnv(dbConnectionStringEnv); ok {
+		*dbConnectionString = valStr
+	}
+
 	return Config{
 		Server: server.Config{
 			ServerAddress:   *serverAddress,
@@ -89,6 +102,9 @@ func Load() (Config, error) {
 			FilePath:        *fileStoragePath,
 			StoreInterval:   time.Duration(*storeInterval) * time.Second,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
+			Database: database.Config{
+				ConnectionString: *dbConnectionString,
+			},
 		},
 	}, nil
 }

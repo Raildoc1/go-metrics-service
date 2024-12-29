@@ -14,10 +14,16 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+type dummyDatabase struct{}
+
+func (d *dummyDatabase) Ping() error {
+	return nil
+}
+
 func setupServer() *httptest.Server {
 	logger := logging.CreateZapLogger(true)
 	memStorage := storage.NewMemStorage(logger)
-	mux := createMux(memStorage, logger)
+	mux := createMux(memStorage, &dummyDatabase{}, logger)
 	return httptest.NewServer(mux)
 }
 
