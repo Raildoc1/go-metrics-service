@@ -20,7 +20,7 @@ func New(repository GaugeRepository, logger *zap.Logger) *Gauge {
 
 func (g *Gauge) Set(key string, value float64) error {
 	g.logger.Debug("Setting", zap.String("key", key), zap.Float64("value", value))
-	err := g.repository.SetFloat64(key, value)
+	err := g.repository.SetGauge(key, value)
 	if err != nil {
 		return fmt.Errorf("%w: setting gauge '%s' failed", err, key)
 	}

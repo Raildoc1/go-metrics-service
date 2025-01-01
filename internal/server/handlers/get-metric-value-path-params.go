@@ -70,13 +70,13 @@ func (h *GetMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *ht
 func (h *GetMetricValuePathParamsHandler) getValue(metricType, key string) (string, error) {
 	switch metricType {
 	case protocol.Gauge:
-		value, err := h.gaugeRepository.GetFloat64(key)
+		value, err := h.gaugeRepository.GetGauge(key)
 		if err != nil {
 			return "", fmt.Errorf("get gauge: %w", err)
 		}
 		return strconv.FormatFloat(value, 'f', -1, 64), nil
 	case protocol.Counter:
-		value, err := h.counterRepository.GetInt64(key)
+		value, err := h.counterRepository.GetCounter(key)
 		if err != nil {
 			return "", fmt.Errorf("get counter: %w", err)
 		}

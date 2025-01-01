@@ -2,10 +2,9 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"fmt"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/repository"
 	"go-metrics-service/internal/server/data/storage"
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
@@ -31,15 +30,21 @@ func Run(cfg Config, logger *zap.Logger) {
 		logger.Error("failed to create database", zap.Error(err))
 		return
 	}
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error("failed to close database", zap.Error(err))
+		}
+	}(db)
 
-	memStorage, err := createMemStorage(cfg, logger)
+	dbStorage, err := storage.NewDatabaseStorage(db, logger)
 	if err != nil {
-		logger.Error("failed to load from file", zap.Error(err))
+		logger.Error("failed to create database storage", zap.Error(err))
 		return
 	}
 
 	srv := &http.Server{Addr: cfg.ServerAddress}
-	srv.Handler = createMux(memStorage, db, logger)
+	srv.Handler = createMux(dbStorage, db, logger)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -47,7 +52,7 @@ func Run(cfg Config, logger *zap.Logger) {
 		}
 	}()
 
-	lifecycle(cfg, logger, memStorage)
+	lifecycle(cfg, logger, dbStorage)
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
@@ -56,25 +61,25 @@ func Run(cfg Config, logger *zap.Logger) {
 	}
 }
 
-func createMemStorage(cfg Config, logger *zap.Logger) (*storage.MemStorage, error) {
-	if cfg.NeedRestore {
-		if _, err := os.Stat(cfg.FilePath); err == nil {
-			file, err := os.Open(cfg.FilePath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to open file: %w", err)
-			}
-			ms, err := storage.LoadFrom(file, logger)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load from file: %w", err)
-			}
-			logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
-			return ms, nil
-		}
-	}
-	return storage.NewMemStorage(logger), nil
-}
+//func createMemStorage(cfg Config, logger *zap.Logger) (*storage.DatabaseStorage, error) {
+//	if cfg.NeedRestore {
+//		if _, err := os.Stat(cfg.FilePath); err == nil {
+//			file, err := os.Open(cfg.FilePath)
+//			if err != nil {
+//				return nil, fmt.Errorf("failed to open file: %w", err)
+//			}
+//			ms, err := storage.LoadFrom(file, logger)
+//			if err != nil {
+//				return nil, fmt.Errorf("failed to load from file: %w", err)
+//			}
+//			logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
+//			return ms, nil
+//		}
+//	}
+//	return storage.NewMemStorage(logger), nil
+//}
 
-func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
+func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.DatabaseStorage) {
 	storeTicker := time.NewTicker(cfg.StoreInterval)
 
 	cancelChan := make(chan os.Signal, 1)
@@ -90,27 +95,26 @@ func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
 	for {
 		select {
 		case <-storeTicker.C:
-			trySaveStorage(memStorage, cfg.FilePath, logger)
+			// trySaveStorage(memStorage, cfg.FilePath, logger)
+			break
 		case <-cancelChan:
-			trySaveStorage(memStorage, cfg.FilePath, logger)
+			// trySaveStorage(memStorage, cfg.FilePath, logger)
 			return
 		}
 	}
 }
 
-func trySaveStorage(memStorage *storage.MemStorage, filePath string, logger *zap.Logger) {
-	if err := storage.SaveMemStorageToFile(memStorage, filePath, logger); err != nil {
-		logger.Error("failed to save to file", zap.Error(err))
-	} else {
-		logger.Info("successfully saved to file", zap.String("path", filePath))
-	}
-}
+//func trySaveStorage(memStorage *storage.DatabaseStorage, filePath string, logger *zap.Logger) {
+//	if err := storage.SaveMemStorageToFile(memStorage, filePath, logger); err != nil {
+//		logger.Error("failed to save to file", zap.Error(err))
+//	} else {
+//		logger.Info("successfully saved to file", zap.String("path", filePath))
+//	}
+//}
 
-func createMux(strg repository.Storage, db Database, logger *zap.Logger) *chi.Mux {
-	rep := repository.New(strg)
-
-	counterLogic := logic.NewCounter(rep, logger)
-	gaugeLogic := logic.New(rep, logger)
+func createMux(memStorage *storage.DatabaseStorage, db Database, logger *zap.Logger) *chi.Mux {
+	counterLogic := logic.NewCounter(memStorage, logger)
+	gaugeLogic := logic.New(memStorage, logger)
 
 	updateMetricPathParamsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
@@ -125,21 +129,21 @@ func createMux(strg repository.Storage, db Database, logger *zap.Logger) *chi.Mu
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValuePathParams(rep, rep, logger)).
+		NewBuilder(handlers.NewGetMetricValuePathParams(memStorage, memStorage, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
 	getMetricValueHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValue(rep, rep, logger)).
+		NewBuilder(handlers.NewGetMetricValue(memStorage, memStorage, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(strg, logger)).
+		NewBuilder(handlers.NewGetAllMetrics(memStorage, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).

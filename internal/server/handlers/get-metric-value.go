@@ -82,13 +82,13 @@ func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 func (h *GetMetricValueHandler) fill(requestData *protocol.Metrics) error {
 	switch requestData.MType {
 	case protocol.Gauge:
-		value, err := h.gaugeRepository.GetFloat64(requestData.ID)
+		value, err := h.gaugeRepository.GetGauge(requestData.ID)
 		if err != nil {
 			return fmt.Errorf("get gauge: %w", err)
 		}
 		requestData.Value = &value
 	case protocol.Counter:
-		value, err := h.counterRepository.GetInt64(requestData.ID)
+		value, err := h.counterRepository.GetCounter(requestData.ID)
 		if err != nil {
 			return fmt.Errorf("get counter: %w", err)
 		}

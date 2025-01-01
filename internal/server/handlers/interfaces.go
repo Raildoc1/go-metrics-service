@@ -13,17 +13,17 @@ var (
 // Data.
 
 type GaugeRepository interface {
-	SetFloat64(key string, value float64) error
-	GetFloat64(key string) (value float64, err error)
+	SetGauge(key string, value float64) error
+	GetGauge(key string) (float64, error)
 }
 
 type CounterRepository interface {
-	SetInt64(key string, value int64) error
-	GetInt64(key string) (value int64, err error)
+	SetCounter(key string, value int64) error
+	GetCounter(key string) (int64, error)
 }
 
 type AllMetricsRepository interface {
-	GetAll() map[string]any
+	GetAll() (map[string]any, error)
 }
 
 // Logic.

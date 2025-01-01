@@ -20,18 +20,22 @@ func NewCounter(repository CounterRepository, logger *zap.Logger) *Counter {
 
 func (c *Counter) Change(key string, delta int64) error {
 	c.logger.Debug("changing", zap.String("key", key), zap.Int64("delta", delta))
+	hasValue, err := c.repository.Has(key)
+	if err != nil {
+		return fmt.Errorf("hasValue: %w", err)
+	}
 	var prevValue int64
-	if !c.repository.Has(key) {
+	if !hasValue {
 		prevValue = int64(0)
 	} else {
 		var err error
-		prevValue, err = c.repository.GetInt64(key)
+		prevValue, err = c.repository.GetCounter(key)
 		if err != nil {
 			return fmt.Errorf("%w: getting counter '%s' failed", err, key)
 		}
 	}
 	newValue := prevValue + delta
-	err := c.repository.SetInt64(key, newValue)
+	err = c.repository.SetCounter(key, newValue)
 	if err != nil {
 		return fmt.Errorf("%w: setting counter '%s' failed", err, key)
 	}
