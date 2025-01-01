@@ -47,33 +47,33 @@ func LoadFrom(reader io.Reader, logger *zap.Logger) (*MemStorage, error) {
 	}, nil
 }
 
-func (m *MemStorage) Set(key string, value any) {
-	m.data[key] = value
+func (s *MemStorage) Set(key string, value any) {
+	s.data[key] = value
 }
 
-func (m *MemStorage) Has(key string) bool {
-	_, ok := m.data[key]
+func (s *MemStorage) Has(key string) bool {
+	_, ok := s.data[key]
 	return ok
 }
 
-func (m *MemStorage) Get(key string) (any, bool) {
-	v, ok := m.data[key]
+func (s *MemStorage) Get(key string) (any, bool) {
+	v, ok := s.data[key]
 	return v, ok
 }
 
-func (m *MemStorage) GetAll() map[string]any {
-	return m.data
+func (s *MemStorage) GetAll() map[string]any {
+	return s.data
 }
 
-func (m *MemStorage) SaveTo(writer io.Writer) error {
+func (s *MemStorage) SaveTo(writer io.Writer) error {
 	err := compression.GzipCompress(
-		serializableData{Data: m.data},
+		serializableData{Data: s.data},
 		func(writer io.Writer) compression.Encoder {
 			return gob.NewEncoder(writer)
 		},
 		writer,
 		gzip.BestCompression,
-		m.logger,
+		s.logger,
 	)
 	if err != nil {
 		return fmt.Errorf("failed not compress data: %w", err)
