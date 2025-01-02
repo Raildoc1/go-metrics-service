@@ -1,4 +1,4 @@
-package storage
+package data
 
 import (
 	"compress/gzip"
@@ -13,23 +13,74 @@ import (
 )
 
 type MemStorage struct {
-	data   map[string]any
+	data   rawData
 	logger *zap.Logger
 }
 
-type serializableData struct {
-	Data map[string]any
+type rawData struct {
+	Counters map[string]int64
+	Gauges   map[string]float64
 }
 
 func NewMemStorage(logger *zap.Logger) *MemStorage {
 	return &MemStorage{
-		data:   make(map[string]any),
+		data: rawData{
+			Gauges:   make(map[string]float64),
+			Counters: make(map[string]int64),
+		},
 		logger: logger,
 	}
 }
 
+func (s *MemStorage) SetCounter(key string, value int64) error {
+	s.data.Counters[key] = value
+	return nil
+}
+
+func (s *MemStorage) SetGauge(key string, value float64) error {
+	s.data.Gauges[key] = value
+	return nil
+}
+
+func (s *MemStorage) Has(key string) (bool, error) {
+	_, hasCounter := s.data.Counters[key]
+	_, hasGauge := s.data.Gauges[key]
+	return hasCounter || hasGauge, nil
+}
+
+func (s *MemStorage) GetCounter(key string) (int64, error) {
+	if _, ok := s.data.Gauges[key]; ok {
+		return 0, ErrWrongType
+	}
+	if val, ok := s.data.Counters[key]; ok {
+		return val, nil
+	}
+	return 0, ErrNotFound
+}
+
+func (s *MemStorage) GetGauge(key string) (float64, error) {
+	if _, ok := s.data.Counters[key]; ok {
+		return 0, ErrWrongType
+	}
+	if val, ok := s.data.Gauges[key]; ok {
+		return val, nil
+	}
+	return 0, ErrNotFound
+}
+
+func (s *MemStorage) GetAll() (map[string]any, error) {
+	res := make(map[string]any)
+	for k, v := range s.data.Counters {
+		res[k] = v
+	}
+	for k, v := range s.data.Gauges {
+		res[k] = v
+	}
+	return res, nil
+}
+
 func LoadFrom(reader io.Reader, logger *zap.Logger) (*MemStorage, error) {
-	var readData serializableData
+	var readData rawData
 	err := compression.GzipDecompress(
 		&readData,
 		func(reader io.Reader) compression.Decoder {
@@ -42,32 +93,20 @@ func LoadFrom(reader io.Reader, logger *zap.Logger) (*MemStorage, error) {
 		return nil, fmt.Errorf("failed to decompress data: %w", err)
 	}
 	return &MemStorage{
-		data:   readData.Data,
+		data: rawData{
+			Counters: readData.Counters,
+			Gauges:   readData.Gauges,
+		},
 		logger: logger,
 	}, nil
 }
 
-func (s *MemStorage) Set(key string, value any) {
-	s.data[key] = value
-}
-
-func (s *MemStorage) Has(key string) bool {
-	_, ok := s.data[key]
-	return ok
-}
-
-func (s *MemStorage) Get(key string) (any, bool) {
-	v, ok := s.data[key]
-	return v, ok
-}
-
-func (s *MemStorage) GetAll() map[string]any {
-	return s.data
-}
-
 func (s *MemStorage) SaveTo(writer io.Writer) error {
 	err := compression.GzipCompress(
-		serializableData{Data: s.data},
+		rawData{
+			Counters: s.data.Counters,
+			Gauges:   s.data.Gauges,
+		},
 		func(writer io.Writer) compression.Encoder {
 			return gob.NewEncoder(writer)
 		},

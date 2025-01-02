@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/data"
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
@@ -37,7 +37,7 @@ func Run(cfg Config, logger *zap.Logger) {
 		}
 	}(db)
 
-	dbStorage, err := storage.NewDatabaseStorage(db, logger)
+	dbStorage, err := data.NewDatabaseStorage(db, logger)
 	if err != nil {
 		logger.Error("failed to create database storage", zap.Error(err))
 		return
@@ -79,7 +79,7 @@ func Run(cfg Config, logger *zap.Logger) {
 //	return storage.NewMemStorage(logger), nil
 //}
 
-func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.DatabaseStorage) {
+func lifecycle(cfg Config, logger *zap.Logger, memStorage *data.DatabaseStorage) {
 	storeTicker := time.NewTicker(cfg.StoreInterval)
 
 	cancelChan := make(chan os.Signal, 1)
@@ -112,7 +112,7 @@ func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.DatabaseStora
 //	}
 //}
 
-func createMux(memStorage *storage.DatabaseStorage, db Database, logger *zap.Logger) *chi.Mux {
+func createMux(memStorage *data.DatabaseStorage, db Database, logger *zap.Logger) *chi.Mux {
 	counterLogic := logic.NewCounter(memStorage, logger)
 	gaugeLogic := logic.New(memStorage, logger)
 
