@@ -2,49 +2,50 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data"
-	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
-type Database interface {
-	handlers.Database
+type Storage interface {
+	handlers.GaugeRepository
+	handlers.CounterRepository
+	handlers.AllMetricsRepository
+	logic.CounterRepository
+	logic.GaugeRepository
 }
 
-func Run(cfg Config, logger *zap.Logger) {
-	db, err := database.New(cfg.Database)
-	if err != nil {
-		logger.Error("failed to create database", zap.Error(err))
-		return
-	}
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			logger.Error("failed to close database", zap.Error(err))
-		}
-	}(db)
+type Server struct {
+	cfg        Config
+	storage    Storage
+	pingables  []handlers.Pingable
+	logger     *zap.Logger
+	httpServer *http.Server
+}
 
-	dbStorage, err := data.NewDatabaseStorage(db, logger)
-	if err != nil {
-		logger.Error("failed to create database storage", zap.Error(err))
-		return
-	}
-
+func New(
+	cfg Config,
+	storage Storage,
+	pingables []handlers.Pingable,
+	logger *zap.Logger,
+) *Server {
 	srv := &http.Server{Addr: cfg.ServerAddress}
-	srv.Handler = createMux(dbStorage, db, logger)
+
+	res := &Server{
+		cfg:        cfg,
+		storage:    storage,
+		pingables:  pingables,
+		logger:     logger,
+		httpServer: srv,
+	}
+
+	srv.Handler = res.createMux()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -52,106 +53,57 @@ func Run(cfg Config, logger *zap.Logger) {
 		}
 	}()
 
-	lifecycle(cfg, logger, dbStorage)
+	return res
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+func (s *Server) Close() {
+	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Error("failed to gracefully shutdown", zap.Error(err))
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		s.logger.Error("failed to gracefully shutdown", zap.Error(err))
 	}
 }
 
-//func createMemStorage(cfg Config, logger *zap.Logger) (*storage.DatabaseStorage, error) {
-//	if cfg.NeedRestore {
-//		if _, err := os.Stat(cfg.FilePath); err == nil {
-//			file, err := os.Open(cfg.FilePath)
-//			if err != nil {
-//				return nil, fmt.Errorf("failed to open file: %w", err)
-//			}
-//			ms, err := storage.LoadFrom(file, logger)
-//			if err != nil {
-//				return nil, fmt.Errorf("failed to load from file: %w", err)
-//			}
-//			logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
-//			return ms, nil
-//		}
-//	}
-//	return storage.NewMemStorage(logger), nil
-//}
-
-func lifecycle(cfg Config, logger *zap.Logger, memStorage *data.DatabaseStorage) {
-	storeTicker := time.NewTicker(cfg.StoreInterval)
-
-	cancelChan := make(chan os.Signal, 1)
-	signal.Notify(
-		cancelChan,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		syscall.SIGABRT,
-	)
-
-	for {
-		select {
-		case <-storeTicker.C:
-			// trySaveStorage(memStorage, cfg.FilePath, logger)
-			break
-		case <-cancelChan:
-			// trySaveStorage(memStorage, cfg.FilePath, logger)
-			return
-		}
-	}
-}
-
-//func trySaveStorage(memStorage *storage.DatabaseStorage, filePath string, logger *zap.Logger) {
-//	if err := storage.SaveMemStorageToFile(memStorage, filePath, logger); err != nil {
-//		logger.Error("failed to save to file", zap.Error(err))
-//	} else {
-//		logger.Info("successfully saved to file", zap.String("path", filePath))
-//	}
-//}
-
-func createMux(memStorage *data.DatabaseStorage, db Database, logger *zap.Logger) *chi.Mux {
-	counterLogic := logic.NewCounter(memStorage, logger)
-	gaugeLogic := logic.New(memStorage, logger)
+func (s *Server) createMux() *chi.Mux {
+	counterLogic := logic.NewCounter(s.storage, s.logger)
+	gaugeLogic := logic.New(s.storage, s.logger)
 
 	updateMetricPathParamsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
+		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, s.logger)).
+		WithLogger(s.logger).
+		WithRequestDecompression(s.logger).
 		Build()
 
 	updateMetricHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
+		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, s.logger)).
+		WithLogger(s.logger).
+		WithRequestDecompression(s.logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValuePathParams(memStorage, memStorage, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		WithResponseCompression(logger).
+		NewBuilder(handlers.NewGetMetricValuePathParams(s.storage, s.storage, s.logger)).
+		WithLogger(s.logger).
+		WithRequestDecompression(s.logger).
+		WithResponseCompression(s.logger).
 		Build()
 
 	getMetricValueHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValue(memStorage, memStorage, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		WithResponseCompression(logger).
+		NewBuilder(handlers.NewGetMetricValue(s.storage, s.storage, s.logger)).
+		WithLogger(s.logger).
+		WithRequestDecompression(s.logger).
+		WithResponseCompression(s.logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(memStorage, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		WithResponseCompression(logger).
+		NewBuilder(handlers.NewGetAllMetrics(s.storage, s.logger)).
+		WithLogger(s.logger).
+		WithRequestDecompression(s.logger).
+		WithResponseCompression(s.logger).
 		Build()
 
 	pingHandler := middleware.
-		NewBuilder(handlers.NewPing(db, logger)).
-		WithLogger(logger).
+		NewBuilder(handlers.NewPing(s.pingables, s.logger)).
+		WithLogger(s.logger).
 		Build()
 
 	router := chi.NewRouter()

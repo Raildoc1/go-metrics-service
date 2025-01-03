@@ -1,24 +1,18 @@
-package data
+package memstorage
 
 import (
 	"fmt"
 	"math"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type storage interface {
-	SetCounter(key string, value int64) error
-	SetGauge(key string, value float64) error
-	Has(key string) (bool, error)
-	GetCounter(key string) (int64, error)
-	GetGauge(key string) (float64, error)
-	GetAll() (map[string]any, error)
-}
-
-func testGetExistingCounter(s storage, t *testing.T) {
+func TestGetExistingCounter(t *testing.T) {
+	memStorage := NewMemStorage(zap.NewNop())
 	tests := []struct {
 		name  string
 		value int64
@@ -40,19 +34,20 @@ func testGetExistingCounter(s storage, t *testing.T) {
 	for i, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			key := fmt.Sprintf("counter-%d", i)
-			err := s.SetCounter(key, test.value)
+			err := memStorage.SetCounter(key, test.value)
 			require.NoError(t, err)
-			has, err := s.Has(key)
+			has, err := memStorage.Has(key)
 			require.NoError(t, err)
 			assert.Equal(t, true, has)
-			val, err := s.GetCounter(key)
+			val, err := memStorage.GetCounter(key)
 			require.NoError(t, err)
 			assert.Equal(t, test.value, val)
 		})
 	}
 }
 
-func testGetExistingGauge(s storage, t *testing.T) {
+func TestGetExistingGauge(t *testing.T) {
+	memStorage := NewMemStorage(zap.NewNop())
 	tests := []struct {
 		name  string
 		value float64
@@ -78,21 +73,22 @@ func testGetExistingGauge(s storage, t *testing.T) {
 	for i, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			key := fmt.Sprintf("gauge-%d", i)
-			err := s.SetGauge(key, test.value)
+			err := memStorage.SetGauge(key, test.value)
 			require.NoError(t, err)
-			has, err := s.Has(key)
+			has, err := memStorage.Has(key)
 			require.NoError(t, err)
 			assert.Equal(t, true, has)
-			val, err := s.GetGauge(key)
+			val, err := memStorage.GetGauge(key)
 			require.NoError(t, err)
 			assert.Equal(t, test.value, val)
 		})
 	}
 }
 
-func testGetNonExistingValue(s storage, t *testing.T) {
-	_, err := s.GetCounter("non_existing_key")
+func TestGetNonExistingValue(t *testing.T) {
+	memStorage := NewMemStorage(zap.NewNop())
+	_, err := memStorage.GetCounter("non_existing_key")
 	require.Error(t, err)
-	_, err = s.GetGauge("non_existing_key")
+	_, err = memStorage.GetGauge("non_existing_key")
 	require.Error(t, err)
 }

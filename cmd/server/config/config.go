@@ -5,6 +5,7 @@ import (
 	"fmt"
 	common "go-metrics-service/cmd/common/config"
 	"go-metrics-service/internal/server"
+	"go-metrics-service/internal/server/data/backupmemstorage"
 	"go-metrics-service/internal/server/database"
 	"os"
 	"strconv"
@@ -30,8 +31,10 @@ const (
 )
 
 type Config struct {
-	Server     server.Config
-	Production bool
+	Database         database.Config
+	BackupMemStorage backupmemstorage.Config
+	Server           server.Config
+	Production       bool
 }
 
 func Load() (Config, error) {
@@ -96,15 +99,19 @@ func Load() (Config, error) {
 	}
 
 	return Config{
+		Database: database.Config{
+			ConnectionString: *dbConnectionString,
+		},
+		BackupMemStorage: backupmemstorage.Config{
+			Backup: backupmemstorage.BackupConfig{
+				FilePath:      *fileStoragePath,
+				StoreInterval: time.Duration(*storeInterval) * time.Second,
+			},
+			NeedRestore: *needRestore,
+		},
 		Server: server.Config{
 			ServerAddress:   *serverAddress,
-			NeedRestore:     *needRestore,
-			FilePath:        *fileStoragePath,
-			StoreInterval:   time.Duration(*storeInterval) * time.Second,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
-			Database: database.Config{
-				ConnectionString: *dbConnectionString,
-			},
 		},
 	}, nil
 }

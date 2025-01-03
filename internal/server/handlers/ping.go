@@ -6,29 +6,31 @@ import (
 	"go.uber.org/zap"
 )
 
-type Database interface {
+type Pingable interface {
 	Ping() error
 }
 
 type PingHandler struct {
-	db     Database
-	logger *zap.Logger
+	pingables []Pingable
+	logger    *zap.Logger
 }
 
 func NewPing(
-	db Database,
+	pingables []Pingable,
 	logger *zap.Logger,
 ) http.Handler {
 	return &PingHandler{
-		db:     db,
-		logger: logger,
+		pingables: pingables,
+		logger:    logger,
 	}
 }
 
 func (h *PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := h.db.Ping()
-	if err != nil {
-		h.logger.Error("database ping error", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
+	for _, pingable := range h.pingables {
+		err := pingable.Ping()
+		if err != nil {
+			h.logger.Error("database ping error", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 }

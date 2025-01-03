@@ -3,7 +3,7 @@ package server
 import (
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data"
+	"go-metrics-service/internal/server/data/memstorage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +22,7 @@ func (d *dummyDatabase) Ping() error {
 
 func setupServer() *httptest.Server {
 	logger := logging.CreateZapLogger(true)
-	memStorage := data.NewMemStorage(logger)
+	memStorage := memstorage.NewMemStorage(logger)
 	mux := createMux(memStorage, &dummyDatabase{}, logger)
 	return httptest.NewServer(mux)
 }

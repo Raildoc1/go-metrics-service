@@ -1,4 +1,4 @@
-package data
+package dbstorage
 
 import (
 	"database/sql"
@@ -69,23 +69,31 @@ const (
 	getAllRequest = `select * from metrics`
 )
 
-type DatabaseStorage struct {
+type DBFactory interface {
+	Create() (*sql.DB, error)
+}
+
+type DBStorage struct {
 	db     *sql.DB
 	logger *zap.Logger
 }
 
-func NewDatabaseStorage(db *sql.DB, logger *zap.Logger) (*DatabaseStorage, error) {
-	_, err := db.Exec(setupDatabaseRequest)
+func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
+	db, err := dbFactory.Create()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create database storage: %w", err)
+		return nil, fmt.Errorf("failed to create database: %w", err)
 	}
-	return &DatabaseStorage{
+	_, err = db.Exec(setupDatabaseRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup database: %w", err)
+	}
+	return &DBStorage{
 		db:     db,
 		logger: logger,
 	}, nil
 }
 
-func (s *DatabaseStorage) SetCounter(key string, value int64) error {
+func (s *DBStorage) SetCounter(key string, value int64) error {
 	_, err := s.db.Exec(upsertCounterRequest, key, value)
 	if err != nil {
 		return fmt.Errorf("database query failed: %w", err)
@@ -93,7 +101,7 @@ func (s *DatabaseStorage) SetCounter(key string, value int64) error {
 	return nil
 }
 
-func (s *DatabaseStorage) SetGauge(key string, value float64) error {
+func (s *DBStorage) SetGauge(key string, value float64) error {
 	_, err := s.db.Exec(upsertGaugeRequest, key, value)
 	if err != nil {
 		return fmt.Errorf("database query failed: %w", err)
@@ -101,7 +109,7 @@ func (s *DatabaseStorage) SetGauge(key string, value float64) error {
 	return nil
 }
 
-func (s *DatabaseStorage) Has(key string) (bool, error) {
+func (s *DBStorage) Has(key string) (bool, error) {
 	row := s.db.QueryRow(hasMetricRequest, key)
 	if err := row.Err(); err != nil {
 		return false, fmt.Errorf("database query failed: %w", err)
@@ -113,7 +121,7 @@ func (s *DatabaseStorage) Has(key string) (bool, error) {
 	return res > 0, nil
 }
 
-func (s *DatabaseStorage) GetCounter(key string) (int64, error) {
+func (s *DBStorage) GetCounter(key string) (int64, error) {
 	row := s.db.QueryRow(getCounterRequest, key)
 	if err := row.Err(); err != nil {
 		return 0, fmt.Errorf("database query failed: %w", err)
@@ -125,7 +133,7 @@ func (s *DatabaseStorage) GetCounter(key string) (int64, error) {
 	return c, nil
 }
 
-func (s *DatabaseStorage) GetGauge(key string) (float64, error) {
+func (s *DBStorage) GetGauge(key string) (float64, error) {
 	row := s.db.QueryRow(getGaugeRequest, key)
 	if err := row.Err(); err != nil {
 		return 0, fmt.Errorf("database query failed: %w", err)
@@ -137,7 +145,7 @@ func (s *DatabaseStorage) GetGauge(key string) (float64, error) {
 	return g, nil
 }
 
-func (s *DatabaseStorage) GetAll() (map[string]any, error) {
+func (s *DBStorage) GetAll() (map[string]any, error) {
 	rows, err := s.db.Query(getAllRequest)
 	if err != nil {
 		return nil, fmt.Errorf("database query failed: %w", err)
@@ -168,4 +176,9 @@ func (s *DatabaseStorage) GetAll() (map[string]any, error) {
 		}
 	}
 	return res, nil
+}
+
+func (s *DBStorage) Close() {
+	err := s.db.Close()
+	s.logger.Error("failed to close database", zap.Error(err))
 }
