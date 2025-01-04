@@ -28,6 +28,7 @@ func (h *GetAllMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		requestLogger.Error("Failed to get metrics", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	var buffer bytes.Buffer
 	for k, v := range data {

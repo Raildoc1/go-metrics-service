@@ -15,12 +15,6 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-type dummyDatabase struct{}
-
-func (d *dummyDatabase) Ping() error {
-	return nil
-}
-
 func setupServer() *httptest.Server {
 	logger := logging.CreateZapLogger(true)
 	memStorage := memstorage.NewMemStorage(logger)
@@ -33,9 +27,9 @@ func TestUpdate(t *testing.T) {
 	defer server.Close()
 
 	type want struct {
-		code        int
 		response    string
 		contentType string
+		code        int
 	}
 	tests := []struct {
 		name        string

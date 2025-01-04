@@ -23,9 +23,9 @@ type BackupConfig struct {
 type BackupMemStorage struct {
 	memstorage.MemStorage
 	logger       *zap.Logger
-	backupConfig BackupConfig
 	stopCh       chan struct{}
 	syncCh       chan struct{}
+	backupConfig BackupConfig
 }
 
 func New(cfg Config, logger *zap.Logger) (*BackupMemStorage, error) {

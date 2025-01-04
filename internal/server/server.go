@@ -22,9 +22,9 @@ type Storage interface {
 }
 
 type Server struct {
-	cfg        Config
 	logger     *zap.Logger
 	httpServer *http.Server
+	cfg        Config
 }
 
 func New(

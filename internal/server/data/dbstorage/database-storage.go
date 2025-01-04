@@ -69,6 +69,10 @@ const (
 	getAllRequest = `select * from metrics`
 )
 
+const (
+	dbQueryFailedMsg = "database query failed: %w"
+)
+
 type DBFactory interface {
 	Create() (*sql.DB, error)
 }
@@ -96,7 +100,7 @@ func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
 func (s *DBStorage) SetCounter(key string, value int64) error {
 	_, err := s.db.Exec(upsertCounterRequest, key, value)
 	if err != nil {
-		return fmt.Errorf("database query failed: %w", err)
+		return fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	return nil
 }
@@ -104,7 +108,7 @@ func (s *DBStorage) SetCounter(key string, value int64) error {
 func (s *DBStorage) SetGauge(key string, value float64) error {
 	_, err := s.db.Exec(upsertGaugeRequest, key, value)
 	if err != nil {
-		return fmt.Errorf("database query failed: %w", err)
+		return fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	return nil
 }
@@ -112,11 +116,11 @@ func (s *DBStorage) SetGauge(key string, value float64) error {
 func (s *DBStorage) Has(key string) (bool, error) {
 	row := s.db.QueryRow(hasMetricRequest, key)
 	if err := row.Err(); err != nil {
-		return false, fmt.Errorf("database query failed: %w", err)
+		return false, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	var res int
 	if err := row.Scan(&res); err != nil {
-		return false, fmt.Errorf("database query failed: %w", err)
+		return false, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	return res > 0, nil
 }
@@ -124,11 +128,11 @@ func (s *DBStorage) Has(key string) (bool, error) {
 func (s *DBStorage) GetCounter(key string) (int64, error) {
 	row := s.db.QueryRow(getCounterRequest, key)
 	if err := row.Err(); err != nil {
-		return 0, fmt.Errorf("database query failed: %w", err)
+		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	var c int64
 	if err := row.Scan(&c); err != nil {
-		return 0, fmt.Errorf("database query failed: %w", err)
+		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	return c, nil
 }
@@ -136,19 +140,19 @@ func (s *DBStorage) GetCounter(key string) (int64, error) {
 func (s *DBStorage) GetGauge(key string) (float64, error) {
 	row := s.db.QueryRow(getGaugeRequest, key)
 	if err := row.Err(); err != nil {
-		return 0, fmt.Errorf("database query failed: %w", err)
+		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	var g float64
 	if err := row.Scan(&g); err != nil {
-		return 0, fmt.Errorf("database query failed: %w", err)
+		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	return g, nil
 }
 
 func (s *DBStorage) GetAll() (map[string]any, error) {
-	rows, err := s.db.Query(getAllRequest)
+	rows, err := s.db.Query(getAllRequest) //nolint:sqlclosecheck // rows are closed below
 	if err != nil {
-		return nil, fmt.Errorf("database query failed: %w", err)
+		return nil, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
@@ -156,22 +160,26 @@ func (s *DBStorage) GetAll() (map[string]any, error) {
 			s.logger.Error("failed to close database rows", zap.Error(err))
 		}
 	}(rows)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf(dbQueryFailedMsg, rows.Err())
+	}
 	type metric struct {
-		key          string
 		gaugeValue   *float64
 		counterValue *int64
+		key          string
 	}
 	res := make(map[string]any)
 	for rows.Next() {
 		var m metric
 		if err := rows.Scan(&m.key, &m.gaugeValue, &m.counterValue); err != nil {
-			return nil, fmt.Errorf("database query failed: %w", err)
+			return nil, fmt.Errorf(dbQueryFailedMsg, err)
 		}
-		if m.counterValue != nil {
+		switch {
+		case m.counterValue != nil:
 			res[m.key] = *m.counterValue
-		} else if m.gaugeValue != nil {
+		case m.gaugeValue != nil:
 			res[m.key] = *m.gaugeValue
-		} else {
+		default:
 			s.logger.Error("null value read", zap.String("key", m.key))
 		}
 	}

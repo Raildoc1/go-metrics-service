@@ -33,7 +33,8 @@ func main() {
 	var pingables []handlers.Pingable
 	var storage server.Storage
 
-	if cfg.Database.ConnectionString != "" {
+	switch {
+	case cfg.Database.ConnectionString != "":
 		dbFactory := database.NewPgxDatabaseFactory(cfg.Database)
 		dbStorage, err := dbstorage.New(dbFactory, logger)
 		if err != nil {
@@ -42,7 +43,7 @@ func main() {
 		}
 		defer dbStorage.Close()
 		storage = dbStorage
-	} else if cfg.BackupMemStorage.Backup.FilePath != "" {
+	case cfg.BackupMemStorage.Backup.FilePath != "":
 		backupMemStorage, err := backupmemstorage.New(cfg.BackupMemStorage, logger)
 		if err != nil {
 			logger.Error("Failed to create memory storage", zap.Error(err))
@@ -50,7 +51,7 @@ func main() {
 		}
 		defer backupMemStorage.Stop()
 		storage = backupMemStorage
-	} else {
+	default:
 		storage = memstorage.NewMemStorage(logger)
 	}
 
@@ -71,10 +72,6 @@ func lifecycle() {
 		syscall.SIGABRT,
 	)
 
-	for {
-		select {
-		case <-cancelChan:
-			return
-		}
+	for range cancelChan {
 	}
 }

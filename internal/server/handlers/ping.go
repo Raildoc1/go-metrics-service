@@ -11,8 +11,8 @@ type Pingable interface {
 }
 
 type PingHandler struct {
-	pingables []Pingable
 	logger    *zap.Logger
+	pingables []Pingable
 }
 
 func NewPing(
