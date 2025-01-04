@@ -4,6 +4,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,11 +24,16 @@ func TestFileSaveLoad(t *testing.T) {
 
 	const filePath = "test.gz"
 
+	backupConfig := BackupConfig{
+		FilePath:      filePath,
+		StoreInterval: time.Second * 1000,
+	}
+
 	defer func() {
 		_ = os.Remove(filePath)
 	}()
 
-	toSave := newEmpty(zap.NewNop())
+	toSave := newEmpty(backupConfig, zap.NewNop())
 	for k, v := range counters {
 		err := toSave.SetCounter(k, v)
 		if err != nil {
@@ -40,11 +46,12 @@ func TestFileSaveLoad(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-	err := toSave.SaveToFile(filePath)
+	err := toSave.saveToFile(filePath)
 	require.NoError(t, err)
 
-	loaded, err := loadFromFile(filePath, zap.NewNop())
+	loaded, err := loadFromFile(backupConfig, zap.NewNop())
 	require.NoError(t, err)
+	defer loaded.Stop()
 
 	for k, v := range counters {
 		val, err := loaded.GetCounter(k)

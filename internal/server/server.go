@@ -23,8 +23,6 @@ type Storage interface {
 
 type Server struct {
 	cfg        Config
-	storage    Storage
-	pingables  []handlers.Pingable
 	logger     *zap.Logger
 	httpServer *http.Server
 }
@@ -39,13 +37,11 @@ func New(
 
 	res := &Server{
 		cfg:        cfg,
-		storage:    storage,
-		pingables:  pingables,
 		logger:     logger,
 		httpServer: srv,
 	}
 
-	srv.Handler = res.createMux()
+	srv.Handler = createMux(storage, pingables, logger)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -64,46 +60,50 @@ func (s *Server) Close() {
 	}
 }
 
-func (s *Server) createMux() *chi.Mux {
-	counterLogic := logic.NewCounter(s.storage, s.logger)
-	gaugeLogic := logic.New(s.storage, s.logger)
+func createMux(
+	storage Storage,
+	pingables []handlers.Pingable,
+	logger *zap.Logger,
+) *chi.Mux {
+	counterLogic := logic.NewCounter(storage, logger)
+	gaugeLogic := logic.New(storage, logger)
 
 	updateMetricPathParamsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, s.logger)).
-		WithLogger(s.logger).
-		WithRequestDecompression(s.logger).
+		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
 		Build()
 
 	updateMetricHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, s.logger)).
-		WithLogger(s.logger).
-		WithRequestDecompression(s.logger).
+		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValuePathParams(s.storage, s.storage, s.logger)).
-		WithLogger(s.logger).
-		WithRequestDecompression(s.logger).
-		WithResponseCompression(s.logger).
+		NewBuilder(handlers.NewGetMetricValuePathParams(storage, storage, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		WithResponseCompression(logger).
 		Build()
 
 	getMetricValueHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValue(s.storage, s.storage, s.logger)).
-		WithLogger(s.logger).
-		WithRequestDecompression(s.logger).
-		WithResponseCompression(s.logger).
+		NewBuilder(handlers.NewGetMetricValue(storage, storage, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		WithResponseCompression(logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(s.storage, s.logger)).
-		WithLogger(s.logger).
-		WithRequestDecompression(s.logger).
-		WithResponseCompression(s.logger).
+		NewBuilder(handlers.NewGetAllMetrics(storage, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		WithResponseCompression(logger).
 		Build()
 
 	pingHandler := middleware.
-		NewBuilder(handlers.NewPing(s.pingables, s.logger)).
-		WithLogger(s.logger).
+		NewBuilder(handlers.NewPing(pingables, logger)).
+		WithLogger(logger).
 		Build()
 
 	router := chi.NewRouter()

@@ -32,11 +32,17 @@ func NewMemStorage(logger *zap.Logger) *MemStorage {
 }
 
 func (s *MemStorage) SetCounter(key string, value int64) error {
+	if _, ok := s.data.Gauges[key]; ok {
+		return data.ErrWrongType
+	}
 	s.data.Counters[key] = value
 	return nil
 }
 
 func (s *MemStorage) SetGauge(key string, value float64) error {
+	if _, ok := s.data.Counters[key]; ok {
+		return data.ErrWrongType
+	}
 	s.data.Gauges[key] = value
 	return nil
 }
