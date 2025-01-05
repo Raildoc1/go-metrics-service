@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"go-metrics-service/cmd/server/config"
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
@@ -30,6 +31,13 @@ func main() {
 		}
 	}(logger)
 
+	jsCfg, err := json.MarshalIndent(cfg, "", "    ") //nolint:musttag // marshalling for debug
+	if err != nil {
+		logger.Error("Failed to marshal configuration", zap.Error(err))
+		return
+	}
+	logger.Sugar().Infoln("Configuration: ", string(jsCfg))
+
 	var pingables []handlers.Pingable
 	var storage server.Storage
 
@@ -58,10 +66,10 @@ func main() {
 	srv := server.New(cfg.Server, storage, pingables, logger)
 	defer srv.Close()
 
-	lifecycle()
+	lifecycle(logger)
 }
 
-func lifecycle() {
+func lifecycle(logger *zap.Logger) {
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(
 		cancelChan,
@@ -73,6 +81,7 @@ func lifecycle() {
 	)
 
 	for range cancelChan {
+		logger.Info("Shutting down...")
 		return
 	}
 }
