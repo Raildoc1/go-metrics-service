@@ -33,11 +33,9 @@ func New(cfg Config, logger *zap.Logger) (*BackupMemStorage, error) {
 	if !cfg.NeedRestore {
 		return newEmpty(cfg.Backup, logger), nil
 	}
-
 	if _, err := os.Stat(cfg.Backup.FilePath); errors.Is(err, os.ErrNotExist) {
 		return newEmpty(cfg.Backup, logger), nil
 	}
-
 	str, err := loadFromFile(cfg.Backup, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore mem-storage: %w", err)
