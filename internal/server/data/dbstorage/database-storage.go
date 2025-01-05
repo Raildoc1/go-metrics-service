@@ -188,5 +188,7 @@ func (s *DBStorage) GetAll() (map[string]any, error) {
 
 func (s *DBStorage) Close() {
 	err := s.db.Close()
-	s.logger.Error("failed to close database", zap.Error(err))
+	if err != nil {
+		s.logger.Error("failed to close database", zap.Error(err))
+	}
 }

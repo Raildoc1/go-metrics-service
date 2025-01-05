@@ -57,6 +57,8 @@ func (s *Server) Close() {
 	defer cancel()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		s.logger.Error("failed to gracefully shutdown", zap.Error(err))
+	} else {
+		s.logger.Info("server gracefully shutdown")
 	}
 }
 

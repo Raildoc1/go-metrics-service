@@ -68,6 +68,8 @@ func main() {
 	defer srv.Close()
 
 	lifecycle(logger)
+
+	logger.Info("Shutting down...")
 }
 
 func lifecycle(logger *zap.Logger) {
