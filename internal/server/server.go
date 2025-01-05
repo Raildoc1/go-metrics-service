@@ -33,15 +33,16 @@ func New(
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 ) *Server {
-	srv := &http.Server{Addr: cfg.ServerAddress}
+	srv := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: createMux(storage, pingables, logger),
+	}
 
 	res := &Server{
 		cfg:        cfg,
 		logger:     logger,
 		httpServer: srv,
 	}
-
-	srv.Handler = createMux(storage, pingables, logger)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -19,6 +19,7 @@ import (
 )
 
 func main() {
+	log.Println("Starting server...")
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)

@@ -111,7 +111,7 @@ func Load() (Config, error) {
 		},
 		Server: server.Config{
 			ServerAddress:   *serverAddress,
-			ShutdownTimeout: defaultServerShutdownTimeout * time.Millisecond,
+			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
 	}, nil
 }
