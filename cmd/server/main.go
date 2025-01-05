@@ -73,5 +73,6 @@ func lifecycle() {
 	)
 
 	for range cancelChan {
+		return
 	}
 }
