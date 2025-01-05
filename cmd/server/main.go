@@ -23,7 +23,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger := logging.CreateZapLogger(!cfg.Production)
+	logger := logging.CreateZapLogger(!cfg.Production).
+		With(zap.String("source", "server"))
 	defer func(logger *zap.Logger) {
 		err := logger.Sync()
 		if err != nil {
