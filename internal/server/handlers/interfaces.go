@@ -1,6 +1,10 @@
 package handlers
 
-import "errors"
+import (
+	"errors"
+	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/data"
+)
 
 // Errors.
 
@@ -13,12 +17,12 @@ var (
 // Data.
 
 type GaugeRepository interface {
-	SetGauge(key string, value float64) error
+	SetGauge(key string, value float64, transactionID data.TransactionID) error
 	GetGauge(key string) (float64, error)
 }
 
 type CounterRepository interface {
-	SetCounter(key string, value int64) error
+	SetCounter(key string, value int64, transactionID data.TransactionID) error
 	GetCounter(key string) (int64, error)
 }
 
@@ -28,10 +32,15 @@ type AllMetricsRepository interface {
 
 // Logic.
 
+type MetricUpdater interface {
+	UpdateOne(metric protocol.Metrics) error
+	UpdateMany(metrics []protocol.Metrics) error
+}
+
 type CounterLogic interface {
-	Change(key string, delta int64) error
+	Change(key string, delta int64, transactionID data.TransactionID) error
 }
 
 type GaugeLogic interface {
-	Set(key string, value float64) error
+	Set(key string, value float64, transactionID data.TransactionID) error
 }

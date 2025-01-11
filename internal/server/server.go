@@ -6,6 +6,7 @@ import (
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
+	"go-metrics-service/internal/server/logic/metricupdater"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
 
@@ -19,6 +20,7 @@ type Storage interface {
 	handlers.AllMetricsRepository
 	logic.CounterRepository
 	logic.GaugeRepository
+	metricupdater.TransactionsHandler
 }
 
 type Server struct {
@@ -70,15 +72,16 @@ func createMux(
 ) *chi.Mux {
 	counterLogic := logic.NewCounter(storage, logger)
 	gaugeLogic := logic.New(storage, logger)
+	metricUpdater := metricupdater.New(storage, gaugeLogic, counterLogic)
 
 	updateMetricPathParamsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
+		NewBuilder(handlers.NewUpdateMetricPathParams(metricUpdater, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	updateMetricHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger)).
+		NewBuilder(handlers.NewUpdateMetric(metricUpdater, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()

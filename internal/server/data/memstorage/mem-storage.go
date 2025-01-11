@@ -3,17 +3,23 @@ package memstorage
 import (
 	"compress/gzip"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/server/data"
 	"io"
+	"sync"
+
+	"github.com/google/uuid"
 
 	"go.uber.org/zap"
 )
 
 type MemStorage struct {
-	data   rawData
-	logger *zap.Logger
+	transaction      *transaction
+	transactionMutex sync.Mutex
+	data             rawData
+	logger           *zap.Logger
 }
 
 type rawData struct {
@@ -21,8 +27,15 @@ type rawData struct {
 	Gauges   map[string]float64
 }
 
+type transaction struct {
+	id            data.TransactionID
+	countersToSet map[string]int64
+	gaugesToSet   map[string]float64
+}
+
 func NewMemStorage(logger *zap.Logger) *MemStorage {
 	return &MemStorage{
+		transaction: nil,
 		data: rawData{
 			Gauges:   make(map[string]float64),
 			Counters: make(map[string]int64),
@@ -31,19 +44,76 @@ func NewMemStorage(logger *zap.Logger) *MemStorage {
 	}
 }
 
-func (s *MemStorage) SetCounter(key string, value int64) error {
-	if _, ok := s.data.Gauges[key]; ok {
-		return data.ErrWrongType
+func (s *MemStorage) BeginTransaction() (data.TransactionID, error) {
+	s.transactionMutex.Lock()
+	if s.transaction != nil {
+		return "", errors.New("transaction is already opened")
 	}
-	s.data.Counters[key] = value
+	id := uuid.New()
+	transactionID := data.TransactionID(id.String())
+	s.transaction = &transaction{
+		id:            transactionID,
+		countersToSet: make(map[string]int64),
+		gaugesToSet:   make(map[string]float64),
+	}
+	return transactionID, nil
+}
+
+func (s *MemStorage) CommitTransaction(transactionID data.TransactionID) error {
+	if s.transaction == nil {
+		return data.ErrNoTransactionOpened
+	}
+	if s.transaction.id != transactionID {
+		return data.ErrWrongTransactionID
+	}
+	for k, v := range s.transaction.countersToSet {
+		s.data.Counters[k] = v
+	}
+	for k, v := range s.transaction.gaugesToSet {
+		s.data.Gauges[k] = v
+	}
+	s.transaction = nil
+	s.transactionMutex.Unlock()
 	return nil
 }
 
-func (s *MemStorage) SetGauge(key string, value float64) error {
+func (s *MemStorage) RollbackTransaction(transactionID data.TransactionID) error {
+	if s.transaction == nil {
+		return data.ErrNoTransactionOpened
+	}
+	if s.transaction.id != transactionID {
+		return data.ErrWrongTransactionID
+	}
+	s.transaction = nil
+	s.transactionMutex.Unlock()
+	return nil
+}
+
+func (s *MemStorage) SetCounter(key string, value int64, transactionID data.TransactionID) error {
+	if err := s.validateTransactionID(transactionID); err != nil {
+		return err
+	}
+	if _, ok := s.data.Gauges[key]; ok {
+		return data.ErrWrongType
+	}
+	if _, ok := s.transaction.gaugesToSet[key]; ok {
+		return data.ErrWrongType
+	}
+	s.transaction.countersToSet[key] = value
+	return nil
+}
+
+func (s *MemStorage) SetGauge(key string, value float64, transactionID data.TransactionID) error {
+	if err := s.validateTransactionID(transactionID); err != nil {
+		return err
+	}
 	if _, ok := s.data.Counters[key]; ok {
 		return data.ErrWrongType
 	}
-	s.data.Gauges[key] = value
+	if _, ok := s.transaction.countersToSet[key]; ok {
+		return data.ErrWrongType
+	}
+	s.transaction.gaugesToSet[key] = value
 	return nil
 }
 
@@ -121,6 +191,13 @@ func (s *MemStorage) SaveTo(writer io.Writer) error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed not compress data: %w", err)
+	}
+	return nil
+}
+
+func (s *MemStorage) validateTransactionID(transactionID data.TransactionID) error {
+	if s.transaction == nil || s.transaction.id != transactionID {
+		return data.ErrWrongTransactionID
 	}
 	return nil
 }

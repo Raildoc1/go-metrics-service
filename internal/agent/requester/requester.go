@@ -91,3 +91,37 @@ func (r *Requester) sendUpdate(requestData protocol.Metrics) (*resty.Response, e
 
 	return resp, nil
 }
+
+func (r *Requester) SendUpdates(metrics []protocol.Metrics) error {
+	url := r.createURL(protocol.UpdateMetricsURL)
+	var body bytes.Buffer
+	err := compression.GzipCompress(
+		metrics,
+		func(writer io.Writer) compression.Encoder {
+			return json.NewEncoder(writer)
+		},
+		&body,
+		gzip.BestSpeed,
+		r.logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to compress request: %w", err)
+	}
+	resp, err := resty.New().
+		R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(body.Bytes()).
+		Post(url)
+	if err != nil {
+		return fmt.Errorf("%w: update failed", err)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("failed to send updates to %s: %d", r.host, resp.StatusCode())
+	}
+	return nil
+}
+
+func (r *Requester) createURL(path string) string {
+	return fmt.Sprintf("http://%s%s", r.host, path)
+}

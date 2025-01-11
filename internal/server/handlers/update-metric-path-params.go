@@ -12,20 +12,17 @@ import (
 )
 
 type UpdateMetricPathParamsHandler struct {
-	counterLogic CounterLogic
-	gaugeLogic   GaugeLogic
-	logger       *zap.Logger
+	metricUpdater MetricUpdater
+	logger        *zap.Logger
 }
 
 func NewUpdateMetricPathParams(
-	counterLogic CounterLogic,
-	gaugeLogic GaugeLogic,
+	metricUpdater MetricUpdater,
 	logger *zap.Logger,
 ) *UpdateMetricPathParamsHandler {
 	return &UpdateMetricPathParamsHandler{
-		counterLogic: counterLogic,
-		gaugeLogic:   gaugeLogic,
-		logger:       logger,
+		metricUpdater: metricUpdater,
+		logger:        logger,
 	}
 }
 
@@ -70,7 +67,12 @@ func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr st
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrParsing, err)
 		}
-		if err := h.gaugeLogic.Set(key, value); err != nil {
+		if err := h.metricUpdater.UpdateOne(protocol.Metrics{
+			ID:    key,
+			MType: protocol.Gauge,
+			Delta: nil,
+			Value: &value,
+		}); err != nil {
 			return fmt.Errorf("failed to set: %w", err)
 		}
 		return nil
@@ -79,7 +81,12 @@ func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr st
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrParsing, err)
 		}
-		if err := h.counterLogic.Change(key, delta); err != nil {
+		if err := h.metricUpdater.UpdateOne(protocol.Metrics{
+			ID:    key,
+			MType: protocol.Gauge,
+			Delta: &delta,
+			Value: nil,
+		}); err != nil {
 			return fmt.Errorf("failed to set: %w", err)
 		}
 		return nil

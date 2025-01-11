@@ -2,6 +2,7 @@ package logic
 
 import (
 	"fmt"
+	"go-metrics-service/internal/server/data"
 
 	"go.uber.org/zap"
 )
@@ -18,7 +19,7 @@ func NewCounter(repository CounterRepository, logger *zap.Logger) *Counter {
 	}
 }
 
-func (c *Counter) Change(key string, delta int64) error {
+func (c *Counter) Change(key string, delta int64, transactionID data.TransactionID) error {
 	c.logger.Debug("changing", zap.String("key", key), zap.Int64("delta", delta))
 	hasValue, err := c.repository.Has(key)
 	if err != nil {
@@ -35,7 +36,7 @@ func (c *Counter) Change(key string, delta int64) error {
 		}
 	}
 	newValue := prevValue + delta
-	err = c.repository.SetCounter(key, newValue)
+	err = c.repository.SetCounter(key, newValue, transactionID)
 	if err != nil {
 		return fmt.Errorf("%w: setting counter '%s' failed", err, key)
 	}

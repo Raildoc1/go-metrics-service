@@ -2,8 +2,12 @@ package dbstorage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"go-metrics-service/internal/server/data"
+	"sync"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -39,18 +43,6 @@ const (
 			for each row
 		execute function fn_validate_metric();`
 
-	upsertCounterRequest = `
-		insert into metrics (key, counter_value)
-		values ($1, $2)
-		on conflict (key)
-			do update set counter_value = $2;`
-
-	upsertGaugeRequest = `
-		insert into metrics (key, gauge_value)
-		values ($1, $2)
-		on conflict (key)
-			do update set gauge_value = $2;`
-
 	hasMetricRequest = `
 		select count(1) from metrics
 		where key=$1
@@ -78,8 +70,15 @@ type DBFactory interface {
 }
 
 type DBStorage struct {
-	db     *sql.DB
-	logger *zap.Logger
+	transaction      *transaction
+	transactionMutex sync.Mutex
+	db               *sql.DB
+	logger           *zap.Logger
+}
+
+type transaction struct {
+	id data.TransactionID
+	tx *sql.Tx
 }
 
 func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
@@ -92,23 +91,103 @@ func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
 		return nil, fmt.Errorf("failed to setup database: %w", err)
 	}
 	return &DBStorage{
-		db:     db,
-		logger: logger,
+		transaction: nil,
+		db:          db,
+		logger:      logger,
 	}, nil
 }
 
-func (s *DBStorage) SetCounter(key string, value int64) error {
-	_, err := s.db.Exec(upsertCounterRequest, key, value)
+func (s *DBStorage) BeginTransaction() (data.TransactionID, error) {
+	s.transactionMutex.Lock()
+	if s.transaction != nil {
+		return "", errors.New("transaction is already opened")
+	}
+	id := uuid.New()
+	transactionID := data.TransactionID(id.String())
+	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf(dbQueryFailedMsg, err)
+		s.transactionMutex.Unlock()
+		return "", fmt.Errorf("failed to start transaction: %w", err)
+	}
+	s.transaction = &transaction{
+		id: transactionID,
+		tx: tx,
+	}
+	return transactionID, nil
+}
+
+func (s *DBStorage) CommitTransaction(transactionID data.TransactionID) error {
+	if s.transaction == nil {
+		return errors.New("no transaction opened")
+	}
+	if s.transaction.id != transactionID {
+		return errors.New("wrong transaction id")
+	}
+
+	defer func(s *DBStorage) {
+		err := s.transaction.tx.Rollback()
+		if err != nil {
+			s.logger.Error("failed to rollback transaction", zap.Error(err))
+		}
+		s.transaction = nil
+		s.transactionMutex.Unlock()
+	}(s)
+
+	err := s.transaction.tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 	return nil
 }
 
-func (s *DBStorage) SetGauge(key string, value float64) error {
-	_, err := s.db.Exec(upsertGaugeRequest, key, value)
+func (s *DBStorage) RollbackTransaction(transactionID data.TransactionID) error {
+	if s.transaction == nil {
+		return errors.New("no transaction opened")
+	}
+	if s.transaction.id != transactionID {
+		return data.ErrWrongTransactionID
+	}
+
+	defer func(s *DBStorage) {
+		s.transaction = nil
+		s.transactionMutex.Unlock()
+	}(s)
+
+	err := s.transaction.tx.Rollback()
 	if err != nil {
-		return fmt.Errorf(dbQueryFailedMsg, err)
+		return fmt.Errorf("failed to rollback transaction: %w", err)
+	}
+	return nil
+}
+
+func (s *DBStorage) SetCounter(key string, value int64, transactionID data.TransactionID) error {
+	if err := s.validateTransactionID(transactionID); err != nil {
+		return err
+	}
+	const upsertCounterRequest = `
+		insert into metrics (key, counter_value)
+		values ($1, $2)
+		on conflict (key)
+			do update set counter_value = $2;`
+	_, err := s.transaction.tx.Exec(upsertCounterRequest, key, value)
+	if err != nil {
+		return fmt.Errorf("setting counter failed: %w", err)
+	}
+	return nil
+}
+
+func (s *DBStorage) SetGauge(key string, value float64, transactionID data.TransactionID) error {
+	if err := s.validateTransactionID(transactionID); err != nil {
+		return err
+	}
+	const upsertGaugeRequest = `
+		insert into metrics (key, gauge_value)
+		values ($1, $2)
+		on conflict (key)
+			do update set gauge_value = $2;`
+	_, err := s.transaction.tx.Exec(upsertGaugeRequest, key, value)
+	if err != nil {
+		return fmt.Errorf("setting gauge failed: %w", err)
 	}
 	return nil
 }
@@ -186,9 +265,54 @@ func (s *DBStorage) GetAll() (map[string]any, error) {
 	return res, nil
 }
 
+// func (s *DBStorage) SetMany(counters map[string]int64, gauges map[string]float64) error {
+//	tx, err := s.db.Begin()
+//	if err != nil {
+//		return fmt.Errorf(dbQueryFailedMsg, err)
+//	}
+//	defer func(tx *sql.Tx) {
+//		err := tx.Rollback()
+//		if err != nil {
+//			s.logger.Error("failed to rollback database transaction", zap.Error(err))
+//		}
+//	}(tx)
+//	for k, v := range counters {
+//		_, err := tx.Exec(upsertCounterRequest, k, v)
+//		if err != nil {
+//			return fmt.Errorf(dbQueryFailedMsg, err)
+//		}
+//	}
+//	for k, v := range gauges {
+//		_, err := tx.Exec(upsertGaugeRequest, k, v)
+//		if err != nil {
+//			return fmt.Errorf(dbQueryFailedMsg, err)
+//		}
+//	}
+//	err = tx.CommitTransaction()
+//	if err != nil {
+//		return fmt.Errorf(dbQueryFailedMsg, err)
+//	}
+//	return nil
+//}
+
 func (s *DBStorage) Close() {
+	if s.transaction != nil {
+		err := s.transaction.tx.Rollback()
+		if err != nil {
+			s.logger.Error("failed to rollback transaction", zap.Error(err))
+		}
+		s.transaction = nil
+		s.transactionMutex.Unlock()
+	}
 	err := s.db.Close()
 	if err != nil {
 		s.logger.Error("failed to close database", zap.Error(err))
 	}
+}
+
+func (s *DBStorage) validateTransactionID(transactionID data.TransactionID) error {
+	if s.transaction == nil || s.transaction.id != transactionID {
+		return data.ErrWrongTransactionID
+	}
+	return nil
 }

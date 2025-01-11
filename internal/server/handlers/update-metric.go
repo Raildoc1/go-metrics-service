@@ -12,20 +12,17 @@ import (
 )
 
 type UpdateMetricValueHandler struct {
-	counterLogic CounterLogic
-	gaugeLogic   GaugeLogic
-	logger       *zap.Logger
+	metricUpdater MetricUpdater
+	logger        *zap.Logger
 }
 
 func NewUpdateMetric(
-	counterLogic CounterLogic,
-	gaugeLogic GaugeLogic,
+	metricUpdater MetricUpdater,
 	logger *zap.Logger,
 ) http.Handler {
 	return &UpdateMetricValueHandler{
-		counterLogic: counterLogic,
-		gaugeLogic:   gaugeLogic,
-		logger:       logger,
+		metricUpdater: metricUpdater,
+		logger:        logger,
 	}
 }
 
@@ -70,14 +67,14 @@ func (h *UpdateMetricValueHandler) update(requestData *protocol.Metrics) error {
 		if requestData.Value == nil {
 			return ErrWrongValueType
 		}
-		if err := h.gaugeLogic.Set(requestData.ID, *requestData.Value); err != nil {
+		if err := h.metricUpdater.UpdateOne(*requestData); err != nil {
 			return fmt.Errorf("set gauge: %w", err)
 		}
 	case protocol.Counter:
 		if requestData.Delta == nil {
 			return ErrWrongValueType
 		}
-		if err := h.counterLogic.Change(requestData.ID, *requestData.Delta); err != nil {
+		if err := h.metricUpdater.UpdateOne(*requestData); err != nil {
 			return fmt.Errorf("change counter: %w", err)
 		}
 	default:

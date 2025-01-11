@@ -17,7 +17,8 @@ func New() *MetricsCollector {
 }
 
 func (mc *MetricsCollector) Poll() {
-	runtime.ReadMemStats(&mc.runtimeMetrics)
+	runtimeMetrics := runtime.MemStats{}
+	runtime.ReadMemStats(&runtimeMetrics)
 	mc.pollsCount++
 }
 
