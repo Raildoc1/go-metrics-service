@@ -1,7 +1,7 @@
 package poller
 
 import (
-	"go-metrics-service/internal/agent/storage"
+	storagePkg "go-metrics-service/internal/agent/storage"
 	"math/rand"
 	"runtime"
 )
@@ -11,10 +11,10 @@ const (
 )
 
 type Poller struct {
-	storage *storage.Storage
+	storage *storagePkg.Storage
 }
 
-func New(storage *storage.Storage) *Poller {
+func New(storage *storagePkg.Storage) *Poller {
 	return &Poller{
 		storage: storage,
 	}

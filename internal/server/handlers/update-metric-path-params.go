@@ -83,7 +83,7 @@ func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr st
 		}
 		if err := h.metricUpdater.UpdateOne(protocol.Metrics{
 			ID:    key,
-			MType: protocol.Gauge,
+			MType: protocol.Counter,
 			Delta: &delta,
 			Value: nil,
 		}); err != nil {

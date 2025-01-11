@@ -2,17 +2,17 @@ package sender
 
 import (
 	"fmt"
-	"go-metrics-service/internal/agent/requester"
-	"go-metrics-service/internal/agent/storage"
+	requesterPkg "go-metrics-service/internal/agent/requester"
+	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/protocol"
 )
 
 type Sender struct {
-	storage   *storage.Storage
-	requester *requester.Requester
+	storage   *storagePkg.Storage
+	requester *requesterPkg.Requester
 }
 
-func New(storage *storage.Storage, requester *requester.Requester) *Sender {
+func New(storage *storagePkg.Storage, requester *requesterPkg.Requester) *Sender {
 	return &Sender{
 		storage:   storage,
 		requester: requester,
