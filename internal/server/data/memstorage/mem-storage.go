@@ -16,10 +16,10 @@ import (
 )
 
 type MemStorage struct {
-	transaction      *transaction
-	transactionMutex sync.Mutex
 	data             rawData
+	transaction      *transaction
 	logger           *zap.Logger
+	transactionMutex sync.Mutex
 }
 
 type rawData struct {
@@ -28,9 +28,9 @@ type rawData struct {
 }
 
 type transaction struct {
-	id            data.TransactionID
 	countersToSet map[string]int64
 	gaugesToSet   map[string]float64
+	id            data.TransactionID
 }
 
 func NewMemStorage(logger *zap.Logger) *MemStorage {

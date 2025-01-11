@@ -22,7 +22,7 @@ type BackupConfig struct {
 }
 
 type BackupMemStorage struct {
-	memstorage.MemStorage
+	*memstorage.MemStorage
 	logger       *zap.Logger
 	stopCh       chan struct{}
 	syncCh       chan struct{}
@@ -49,7 +49,7 @@ func (s *BackupMemStorage) Stop() {
 }
 
 func newEmpty(backupConfig BackupConfig, logger *zap.Logger) *BackupMemStorage {
-	return create(backupConfig, *memstorage.NewMemStorage(logger), logger)
+	return create(backupConfig, memstorage.NewMemStorage(logger), logger)
 }
 
 func loadFromFile(backupConfig BackupConfig, logger *zap.Logger) (*BackupMemStorage, error) {
@@ -61,10 +61,10 @@ func loadFromFile(backupConfig BackupConfig, logger *zap.Logger) (*BackupMemStor
 	if err != nil {
 		return nil, fmt.Errorf("failed to load from file: %w", err)
 	}
-	return create(backupConfig, *ms, logger), nil
+	return create(backupConfig, ms, logger), nil
 }
 
-func create(backupConfig BackupConfig, ms memstorage.MemStorage, logger *zap.Logger) *BackupMemStorage {
+func create(backupConfig BackupConfig, ms *memstorage.MemStorage, logger *zap.Logger) *BackupMemStorage {
 	res := &BackupMemStorage{
 		MemStorage:   ms,
 		logger:       logger,

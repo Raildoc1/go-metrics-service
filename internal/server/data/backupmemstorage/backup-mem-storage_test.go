@@ -34,19 +34,23 @@ func TestFileSaveLoad(t *testing.T) {
 	}()
 
 	toSave := newEmpty(backupConfig, zap.NewNop())
+	tID, err := toSave.BeginTransaction()
+	require.NoError(t, err)
 	for k, v := range counters {
-		err := toSave.SetCounter(k, v)
+		err := toSave.SetCounter(k, v, tID)
 		if err != nil {
 			require.NoError(t, err)
 		}
 	}
 	for k, v := range gauges {
-		err := toSave.SetGauge(k, v)
+		err := toSave.SetGauge(k, v, tID)
 		if err != nil {
 			require.NoError(t, err)
 		}
 	}
-	err := toSave.saveToFile(filePath)
+	err = toSave.CommitTransaction(tID)
+	require.NoError(t, err)
+	err = toSave.saveToFile(filePath)
 	require.NoError(t, err)
 
 	loaded, err := loadFromFile(backupConfig, zap.NewNop())

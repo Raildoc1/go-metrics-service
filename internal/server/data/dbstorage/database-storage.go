@@ -71,14 +71,14 @@ type DBFactory interface {
 
 type DBStorage struct {
 	transaction      *transaction
-	transactionMutex sync.Mutex
 	db               *sql.DB
 	logger           *zap.Logger
+	transactionMutex sync.Mutex
 }
 
 type transaction struct {
-	id data.TransactionID
 	tx *sql.Tx
+	id data.TransactionID
 }
 
 func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {

@@ -61,5 +61,4 @@ func (p *Poller) Poll() {
 		"TotalAlloc":    float64(runtimeMetrics.TotalAlloc),
 		"RandomValue":   rand.Float64(),
 	})
-
 }

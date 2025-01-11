@@ -31,10 +31,14 @@ func TestGetExistingCounter(t *testing.T) {
 		},
 	}
 
-	for i, test := range tests {
+	for i, test := range tests { //nolint:dupl // different types
 		t.Run(test.name, func(t *testing.T) {
 			key := fmt.Sprintf("counter-%d", i)
-			err := memStorage.SetCounter(key, test.value)
+			tID, err := memStorage.BeginTransaction()
+			require.NoError(t, err)
+			err = memStorage.SetCounter(key, test.value, tID)
+			require.NoError(t, err)
+			err = memStorage.CommitTransaction(tID)
 			require.NoError(t, err)
 			has, err := memStorage.Has(key)
 			require.NoError(t, err)
@@ -70,10 +74,14 @@ func TestGetExistingGauge(t *testing.T) {
 		},
 	}
 
-	for i, test := range tests {
+	for i, test := range tests { //nolint:dupl // different types
 		t.Run(test.name, func(t *testing.T) {
 			key := fmt.Sprintf("gauge-%d", i)
-			err := memStorage.SetGauge(key, test.value)
+			tID, err := memStorage.BeginTransaction()
+			require.NoError(t, err)
+			err = memStorage.SetGauge(key, test.value, tID)
+			require.NoError(t, err)
+			err = memStorage.CommitTransaction(tID)
 			require.NoError(t, err)
 			has, err := memStorage.Has(key)
 			require.NoError(t, err)
