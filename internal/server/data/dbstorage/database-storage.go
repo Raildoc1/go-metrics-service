@@ -225,8 +225,8 @@ func (s *DBStorage) Has(key string) (bool, error) {
 //nolint:dupl // no different type
 func (s *DBStorage) GetCounter(key string) (int64, error) {
 	if s.transaction != nil {
-		if _, ok := s.transaction.countersToSet[key]; ok {
-			return s.transaction.countersToSet[key], nil
+		if val, ok := s.transaction.countersToSet[key]; ok {
+			return val, nil
 		}
 	}
 	row := s.db.QueryRow(getCounterRequest, key)
@@ -234,17 +234,22 @@ func (s *DBStorage) GetCounter(key string) (int64, error) {
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	var c int64
-	if err := row.Scan(&c); err != nil {
+	err := row.Scan(&c)
+	switch {
+	case err == nil:
+		return c, nil
+	case errors.Is(err, sql.ErrNoRows):
+		return 0, nil
+	default:
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
-	return c, nil
 }
 
 //nolint:dupl // no different type
 func (s *DBStorage) GetGauge(key string) (float64, error) {
 	if s.transaction != nil {
-		if _, ok := s.transaction.gaugesToSet[key]; ok {
-			return s.transaction.gaugesToSet[key], nil
+		if val, ok := s.transaction.gaugesToSet[key]; ok {
+			return val, nil
 		}
 	}
 	row := s.db.QueryRow(getGaugeRequest, key)
@@ -252,10 +257,15 @@ func (s *DBStorage) GetGauge(key string) (float64, error) {
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	var g float64
-	if err := row.Scan(&g); err != nil {
+	err := row.Scan(&g)
+	switch {
+	case err == nil:
+		return g, nil
+	case errors.Is(err, sql.ErrNoRows):
+		return 0, nil
+	default:
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
-	return g, nil
 }
 
 func (s *DBStorage) GetAll() (map[string]any, error) {
