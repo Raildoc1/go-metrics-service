@@ -77,8 +77,10 @@ type DBStorage struct {
 }
 
 type transaction struct {
-	tx *sql.Tx
-	id data.TransactionID
+	tx            *sql.Tx
+	countersToSet map[string]int64
+	gaugesToSet   map[string]float64
+	id            data.TransactionID
 }
 
 func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
@@ -110,8 +112,10 @@ func (s *DBStorage) BeginTransaction() (data.TransactionID, error) {
 		return "", fmt.Errorf("failed to start transaction: %w", err)
 	}
 	s.transaction = &transaction{
-		id: transactionID,
-		tx: tx,
+		id:            transactionID,
+		tx:            tx,
+		countersToSet: make(map[string]int64),
+		gaugesToSet:   make(map[string]float64),
 	}
 	return transactionID, nil
 }
@@ -177,6 +181,7 @@ func (s *DBStorage) SetCounter(key string, value int64, transactionID data.Trans
 	if err != nil {
 		return fmt.Errorf("setting counter failed: %w", err)
 	}
+	s.transaction.countersToSet[key] = value
 	return nil
 }
 
@@ -193,6 +198,7 @@ func (s *DBStorage) SetGauge(key string, value float64, transactionID data.Trans
 	if err != nil {
 		return fmt.Errorf("setting gauge failed: %w", err)
 	}
+	s.transaction.gaugesToSet[key] = value
 	return nil
 }
 
@@ -208,7 +214,13 @@ func (s *DBStorage) Has(key string) (bool, error) {
 	return res > 0, nil
 }
 
+//nolint:dupl // no different type
 func (s *DBStorage) GetCounter(key string) (int64, error) {
+	if s.transaction != nil {
+		if _, ok := s.transaction.countersToSet[key]; ok {
+			return s.transaction.countersToSet[key], nil
+		}
+	}
 	row := s.db.QueryRow(getCounterRequest, key)
 	if err := row.Err(); err != nil {
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
@@ -220,7 +232,13 @@ func (s *DBStorage) GetCounter(key string) (int64, error) {
 	return c, nil
 }
 
+//nolint:dupl // no different type
 func (s *DBStorage) GetGauge(key string) (float64, error) {
+	if s.transaction != nil {
+		if _, ok := s.transaction.gaugesToSet[key]; ok {
+			return s.transaction.gaugesToSet[key], nil
+		}
+	}
 	row := s.db.QueryRow(getGaugeRequest, key)
 	if err := row.Err(); err != nil {
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
@@ -264,6 +282,14 @@ func (s *DBStorage) GetAll() (map[string]any, error) {
 			res[m.key] = *m.gaugeValue
 		default:
 			s.logger.Error("null value read", zap.String("key", m.key))
+		}
+	}
+	if s.transaction != nil {
+		for k, v := range s.transaction.countersToSet {
+			res[k] = v
+		}
+		for k, v := range s.transaction.gaugesToSet {
+			res[k] = v
 		}
 	}
 	return res, nil

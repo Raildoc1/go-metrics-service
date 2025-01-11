@@ -118,12 +118,25 @@ func (s *MemStorage) SetGauge(key string, value float64, transactionID data.Tran
 }
 
 func (s *MemStorage) Has(key string) (bool, error) {
+	if s.transaction != nil {
+		if _, ok := s.transaction.countersToSet[key]; ok {
+			return true, nil
+		}
+		if _, ok := s.transaction.gaugesToSet[key]; ok {
+			return true, nil
+		}
+	}
 	_, hasCounter := s.data.Counters[key]
 	_, hasGauge := s.data.Gauges[key]
 	return hasCounter || hasGauge, nil
 }
 
 func (s *MemStorage) GetCounter(key string) (int64, error) {
+	if s.transaction != nil {
+		if val, ok := s.transaction.countersToSet[key]; ok {
+			return val, nil
+		}
+	}
 	if _, ok := s.data.Gauges[key]; ok {
 		return 0, data.ErrWrongType
 	}
@@ -134,6 +147,11 @@ func (s *MemStorage) GetCounter(key string) (int64, error) {
 }
 
 func (s *MemStorage) GetGauge(key string) (float64, error) {
+	if s.transaction != nil {
+		if val, ok := s.transaction.gaugesToSet[key]; ok {
+			return val, nil
+		}
+	}
 	if _, ok := s.data.Counters[key]; ok {
 		return 0, data.ErrWrongType
 	}
@@ -150,6 +168,14 @@ func (s *MemStorage) GetAll() (map[string]any, error) {
 	}
 	for k, v := range s.data.Gauges {
 		res[k] = v
+	}
+	if s.transaction != nil {
+		for k, v := range s.transaction.countersToSet {
+			res[k] = v
+		}
+		for k, v := range s.transaction.gaugesToSet {
+			res[k] = v
+		}
 	}
 	return res, nil
 }
