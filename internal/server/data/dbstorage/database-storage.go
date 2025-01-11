@@ -203,6 +203,14 @@ func (s *DBStorage) SetGauge(key string, value float64, transactionID data.Trans
 }
 
 func (s *DBStorage) Has(key string) (bool, error) {
+	if s.transaction != nil {
+		if _, ok := s.transaction.countersToSet[key]; ok {
+			return true, nil
+		}
+		if _, ok := s.transaction.gaugesToSet[key]; ok {
+			return true, nil
+		}
+	}
 	row := s.db.QueryRow(hasMetricRequest, key)
 	if err := row.Err(); err != nil {
 		return false, fmt.Errorf(dbQueryFailedMsg, err)
