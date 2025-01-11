@@ -126,7 +126,11 @@ func (s *DBStorage) CommitTransaction(transactionID data.TransactionID) error {
 
 	defer func(s *DBStorage) {
 		err := s.transaction.tx.Rollback()
-		if err != nil {
+		switch {
+		case err == nil:
+		case errors.Is(err, sql.ErrTxDone):
+			// Ignore.
+		default:
 			s.logger.Error("failed to rollback transaction", zap.Error(err))
 		}
 		s.transaction = nil
@@ -264,36 +268,6 @@ func (s *DBStorage) GetAll() (map[string]any, error) {
 	}
 	return res, nil
 }
-
-// func (s *DBStorage) SetMany(counters map[string]int64, gauges map[string]float64) error {
-//	tx, err := s.db.Begin()
-//	if err != nil {
-//		return fmt.Errorf(dbQueryFailedMsg, err)
-//	}
-//	defer func(tx *sql.Tx) {
-//		err := tx.Rollback()
-//		if err != nil {
-//			s.logger.Error("failed to rollback database transaction", zap.Error(err))
-//		}
-//	}(tx)
-//	for k, v := range counters {
-//		_, err := tx.Exec(upsertCounterRequest, k, v)
-//		if err != nil {
-//			return fmt.Errorf(dbQueryFailedMsg, err)
-//		}
-//	}
-//	for k, v := range gauges {
-//		_, err := tx.Exec(upsertGaugeRequest, k, v)
-//		if err != nil {
-//			return fmt.Errorf(dbQueryFailedMsg, err)
-//		}
-//	}
-//	err = tx.CommitTransaction()
-//	if err != nil {
-//		return fmt.Errorf(dbQueryFailedMsg, err)
-//	}
-//	return nil
-//}
 
 func (s *DBStorage) Close() {
 	if s.transaction != nil {
