@@ -86,6 +86,12 @@ func createMux(
 		WithRequestDecompression(logger).
 		Build()
 
+	updateMetricsHandler := middleware.
+		NewBuilder(handlers.NewUpdateMetrics(metricUpdater, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		Build()
+
 	getMetricValuePathParamsHandler := middleware.
 		NewBuilder(handlers.NewGetMetricValuePathParams(storage, storage, logger)).
 		WithLogger(logger).
@@ -115,6 +121,7 @@ func createMux(
 	router := chi.NewRouter()
 
 	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
+	router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
 	router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
 	router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
 	router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)

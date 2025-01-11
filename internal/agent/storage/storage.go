@@ -29,7 +29,7 @@ func (s *Storage) SetCounter(key string, value int64) {
 		return
 	}
 
-	(*val).value = value
+	val.value = value
 }
 
 func (s *Storage) SetGauge(key string, value float64) {
@@ -44,7 +44,7 @@ func (s *Storage) SetGauge(key string, value float64) {
 		return
 	}
 
-	(*val).value = value
+	val.value = value
 }
 
 func (s *Storage) SetGauges(vals map[string]float64) {
@@ -55,14 +55,14 @@ func (s *Storage) SetGauges(vals map[string]float64) {
 
 func (s *Storage) GetCounter(key string) (int64, bool) {
 	if val, ok := s.counters[key]; ok {
-		return (*val).value, true
+		return val.value, true
 	}
 	return 0, false
 }
 
 func (s *Storage) GetGauge(key string) (float64, bool) {
 	if val, ok := s.gauges[key]; ok {
-		return (*val).value, true
+		return val.value, true
 	}
 	return 0, false
 }

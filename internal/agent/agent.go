@@ -2,9 +2,10 @@ package agent
 
 import (
 	"go-metrics-service/internal/agent/config"
-	metricsCollector "go-metrics-service/internal/agent/metrics/collector"
-	metricsSender "go-metrics-service/internal/agent/metrics/sender"
-	metricsRequester "go-metrics-service/internal/agent/requester"
+	pollerPkg "go-metrics-service/internal/agent/poller"
+	requesterPkg "go-metrics-service/internal/agent/requester"
+	senderPkg "go-metrics-service/internal/agent/sender"
+	storagePkg "go-metrics-service/internal/agent/storage"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,14 +15,15 @@ import (
 )
 
 func Run(cfg config.Config, logger *zap.Logger) {
-	collector := metricsCollector.New()
-	requester := metricsRequester.New(cfg.ServerAddress, logger)
-	sender := metricsSender.New(collector, requester, logger)
+	storage := storagePkg.New()
+	poller := pollerPkg.New(storage)
+	requester := requesterPkg.New(cfg.ServerAddress, logger)
+	sender := senderPkg.New(storage, requester)
 
-	lifecycle(cfg, collector, sender)
+	lifecycle(cfg, poller, sender, logger)
 }
 
-func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {
+func lifecycle(cfg config.Config, poller *pollerPkg.Poller, sender *senderPkg.Sender, logger *zap.Logger) {
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(
 		cancelChan,
@@ -43,17 +45,11 @@ func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, 
 		case <-cancelChan:
 			return
 		case <-pollTicker.C:
-			collector.Poll()
+			poller.Poll()
 		case <-sendingTicker.C:
-			send(collector, sender)
+			if err := sender.Send(); err != nil {
+				logger.Error("sending failed", zap.Error(err))
+			}
 		}
-	}
-}
-
-func send(collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {
-	sender.TrySendRuntimeMetrics()
-	sender.TrySendRandomValue()
-	if ok := sender.TrySendPollCount(); ok {
-		collector.FlushPollsCount()
 	}
 }

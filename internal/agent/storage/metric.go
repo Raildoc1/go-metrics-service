@@ -18,7 +18,7 @@ type gauge struct {
 }
 
 func (m *metric[T]) changed() bool {
-	return (*m.lastCommitedValue) != m.value
+	return m.lastCommitedValue == nil || (*m.lastCommitedValue) != m.value
 }
 
 func (m *metric[T]) commit() {
