@@ -1,11 +1,13 @@
 package agent
 
 import (
+	"context"
+	"errors"
 	"go-metrics-service/internal/agent/config"
 	pollerPkg "go-metrics-service/internal/agent/poller"
-	requesterPkg "go-metrics-service/internal/agent/requester"
 	senderPkg "go-metrics-service/internal/agent/sender"
 	storagePkg "go-metrics-service/internal/agent/storage"
+	"go-metrics-service/internal/common/timeutils"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,8 +19,7 @@ import (
 func Run(cfg config.Config, logger *zap.Logger) {
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage)
-	requester := requesterPkg.New(cfg.ServerAddress, logger)
-	sender := senderPkg.New(storage, requester)
+	sender := senderPkg.New(cfg.ServerAddress, storage, logger)
 
 	lifecycle(cfg, poller, sender, logger)
 }
@@ -47,9 +48,20 @@ func lifecycle(cfg config.Config, poller *pollerPkg.Poller, sender *senderPkg.Se
 		case <-pollTicker.C:
 			poller.Poll()
 		case <-sendingTicker.C:
-			if err := sender.Send(); err != nil {
-				logger.Error("sending failed", zap.Error(err))
-			}
+			_ = timeutils.Retry(
+				context.Background(),
+				cfg.RetryAttempts,
+				func(ctx context.Context) error {
+					return sender.Send()
+				},
+				func(err error) (needRetry bool) {
+					needRetry = errors.Is(err, senderPkg.ErrServerUnavailable)
+					if needRetry {
+						logger.Error("sending failed", zap.Error(err))
+					}
+					return needRetry
+				},
+			)
 		}
 	}
 }

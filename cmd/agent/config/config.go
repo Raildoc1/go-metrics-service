@@ -21,6 +21,7 @@ const (
 const (
 	defaultSendingIntervalSeconds = 10
 	defaultPollingIntervalSeconds = 2
+	defaultRetryAttempts          = 3
 )
 
 type Config struct {
@@ -93,6 +94,7 @@ func Load() (Config, error) {
 			ServerAddress:   *serverAddress,
 			SendingInterval: sendingFreq,
 			PollingInterval: pollingFreq,
+			RetryAttempts:   defaultRetryAttempts,
 		},
 		Production: false,
 	}, nil
