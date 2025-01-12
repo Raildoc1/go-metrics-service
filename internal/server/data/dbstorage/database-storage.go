@@ -17,7 +17,7 @@ const (
 		(
 			key           varchar(63) not null primary key,
 			gauge_value   double precision,
-			counter_value integer
+			counter_value bigint
 		);
 		
 		create or replace function fn_validate_metric() returns trigger as
