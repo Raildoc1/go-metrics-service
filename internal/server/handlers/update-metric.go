@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,7 +40,7 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 
 	const errUpdate = "update failed"
-	if err := h.update(&requestData); err != nil {
+	if err := h.update(r.Context(), &requestData); err != nil {
 		switch {
 		case errors.Is(err, ErrWrongValueType):
 			requestLogger.Debug(errUpdate, zap.Error(err))
@@ -61,20 +62,20 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (h *UpdateMetricValueHandler) update(requestData *protocol.Metrics) error {
+func (h *UpdateMetricValueHandler) update(ctx context.Context, requestData *protocol.Metrics) error {
 	switch requestData.MType {
 	case protocol.Gauge:
 		if requestData.Value == nil {
 			return ErrWrongValueType
 		}
-		if err := h.metricUpdater.UpdateOne(*requestData); err != nil {
+		if err := h.metricUpdater.UpdateOne(ctx, *requestData); err != nil {
 			return fmt.Errorf("set gauge: %w", err)
 		}
 	case protocol.Counter:
 		if requestData.Delta == nil {
 			return ErrWrongValueType
 		}
-		if err := h.metricUpdater.UpdateOne(*requestData); err != nil {
+		if err := h.metricUpdater.UpdateOne(ctx, *requestData); err != nil {
 			return fmt.Errorf("change counter: %w", err)
 		}
 	default:

@@ -1,6 +1,7 @@
 package memstorage
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"testing"
@@ -36,14 +37,14 @@ func TestGetExistingCounter(t *testing.T) {
 			key := fmt.Sprintf("counter-%d", i)
 			tID, err := memStorage.BeginTransaction()
 			require.NoError(t, err)
-			err = memStorage.SetCounter(key, test.value, tID)
+			err = memStorage.SetCounter(context.Background(), key, test.value, tID)
 			require.NoError(t, err)
 			err = memStorage.CommitTransaction(tID)
 			require.NoError(t, err)
-			has, err := memStorage.Has(key)
+			has, err := memStorage.Has(context.Background(), key)
 			require.NoError(t, err)
 			assert.Equal(t, true, has)
-			val, err := memStorage.GetCounter(key)
+			val, err := memStorage.GetCounter(context.Background(), key)
 			require.NoError(t, err)
 			assert.Equal(t, test.value, val)
 		})
@@ -79,14 +80,14 @@ func TestGetExistingGauge(t *testing.T) {
 			key := fmt.Sprintf("gauge-%d", i)
 			tID, err := memStorage.BeginTransaction()
 			require.NoError(t, err)
-			err = memStorage.SetGauge(key, test.value, tID)
+			err = memStorage.SetGauge(context.Background(), key, test.value, tID)
 			require.NoError(t, err)
 			err = memStorage.CommitTransaction(tID)
 			require.NoError(t, err)
-			has, err := memStorage.Has(key)
+			has, err := memStorage.Has(context.Background(), key)
 			require.NoError(t, err)
 			assert.Equal(t, true, has)
-			val, err := memStorage.GetGauge(key)
+			val, err := memStorage.GetGauge(context.Background(), key)
 			require.NoError(t, err)
 			assert.Equal(t, test.value, val)
 		})
@@ -95,8 +96,8 @@ func TestGetExistingGauge(t *testing.T) {
 
 func TestGetNonExistingValue(t *testing.T) {
 	memStorage := NewMemStorage(zap.NewNop())
-	_, err := memStorage.GetCounter("non_existing_key")
+	_, err := memStorage.GetCounter(context.Background(), "non_existing_key")
 	require.Error(t, err)
-	_, err = memStorage.GetGauge("non_existing_key")
+	_, err = memStorage.GetGauge(context.Background(), "non_existing_key")
 	require.Error(t, err)
 }

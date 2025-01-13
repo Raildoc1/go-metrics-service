@@ -26,6 +26,7 @@ const (
 const (
 	defaultFileStoragePath       = "./localstorage/data.gz"
 	defaultServerShutdownTimeout = 5
+	defaultRetryAttempts         = 3
 	defaultStoreInterval         = 300
 	defaultRestore               = true
 )
@@ -101,6 +102,7 @@ func Load() (Config, error) {
 	return Config{
 		Database: database.Config{
 			ConnectionString: *dbConnectionString,
+			RetryAttempts:    defaultRetryAttempts,
 		},
 		BackupMemStorage: backupmemstorage.Config{
 			Backup: backupmemstorage.BackupConfig{

@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	ConnectionString string
+	RetryAttempts    int
 }
 
 type PgxDatabaseFactory struct {

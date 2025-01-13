@@ -24,7 +24,7 @@ func NewGetAllMetrics(repository AllMetricsRepository, logger *zap.Logger) *GetA
 func (h *GetAllMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestLogger := NewRequestLogger(h.logger, r)
 	defer closeBody(r.Body, requestLogger)
-	data, err := h.repository.GetAll()
+	data, err := h.repository.GetAll(r.Context())
 	if err != nil {
 		requestLogger.Error("Failed to get metrics", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)

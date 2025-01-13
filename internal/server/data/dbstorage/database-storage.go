@@ -1,11 +1,16 @@
 package dbstorage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"go-metrics-service/internal/common/timeutils"
 	"go-metrics-service/internal/server/data"
 	"sync"
+
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -74,6 +79,7 @@ type DBStorage struct {
 	db               *sql.DB
 	logger           *zap.Logger
 	transactionMutex sync.Mutex
+	retryAttempts    int
 }
 
 type transaction struct {
@@ -83,7 +89,7 @@ type transaction struct {
 	id            data.TransactionID
 }
 
-func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
+func New(dbFactory DBFactory, retryAttempts int, logger *zap.Logger) (*DBStorage, error) {
 	db, err := dbFactory.Create()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database: %w", err)
@@ -93,9 +99,10 @@ func New(dbFactory DBFactory, logger *zap.Logger) (*DBStorage, error) {
 		return nil, fmt.Errorf("failed to setup database: %w", err)
 	}
 	return &DBStorage{
-		transaction: nil,
-		db:          db,
-		logger:      logger,
+		transaction:   nil,
+		db:            db,
+		logger:        logger,
+		retryAttempts: retryAttempts,
 	}, nil
 }
 
@@ -168,7 +175,12 @@ func (s *DBStorage) RollbackTransaction(transactionID data.TransactionID) error 
 	return nil
 }
 
-func (s *DBStorage) SetCounter(key string, value int64, transactionID data.TransactionID) error {
+func (s *DBStorage) SetCounter(
+	ctx context.Context,
+	key string,
+	value int64,
+	transactionID data.TransactionID,
+) error {
 	if err := s.validateTransactionID(transactionID); err != nil {
 		return err
 	}
@@ -177,7 +189,7 @@ func (s *DBStorage) SetCounter(key string, value int64, transactionID data.Trans
 		values ($1, $2)
 		on conflict (key)
 			do update set counter_value = $2;`
-	_, err := s.transaction.tx.Exec(upsertCounterRequest, key, value)
+	_, err := s.transaction.tx.ExecContext(ctx, upsertCounterRequest, key, value)
 	if err != nil {
 		return fmt.Errorf("setting counter failed: %w", err)
 	}
@@ -185,7 +197,12 @@ func (s *DBStorage) SetCounter(key string, value int64, transactionID data.Trans
 	return nil
 }
 
-func (s *DBStorage) SetGauge(key string, value float64, transactionID data.TransactionID) error {
+func (s *DBStorage) SetGauge(
+	ctx context.Context,
+	key string,
+	value float64,
+	transactionID data.TransactionID,
+) error {
 	if err := s.validateTransactionID(transactionID); err != nil {
 		return err
 	}
@@ -194,7 +211,7 @@ func (s *DBStorage) SetGauge(key string, value float64, transactionID data.Trans
 		values ($1, $2)
 		on conflict (key)
 			do update set gauge_value = $2;`
-	_, err := s.transaction.tx.Exec(upsertGaugeRequest, key, value)
+	_, err := s.transaction.tx.ExecContext(ctx, upsertGaugeRequest, key, value)
 	if err != nil {
 		return fmt.Errorf("setting gauge failed: %w", err)
 	}
@@ -202,7 +219,7 @@ func (s *DBStorage) SetGauge(key string, value float64, transactionID data.Trans
 	return nil
 }
 
-func (s *DBStorage) Has(key string) (bool, error) {
+func (s *DBStorage) Has(ctx context.Context, key string) (bool, error) {
 	if s.transaction != nil {
 		if _, ok := s.transaction.countersToSet[key]; ok {
 			return true, nil
@@ -211,7 +228,7 @@ func (s *DBStorage) Has(key string) (bool, error) {
 			return true, nil
 		}
 	}
-	row := s.db.QueryRow(hasMetricRequest, key)
+	row := s.db.QueryRowContext(ctx, hasMetricRequest, key)
 	if err := row.Err(); err != nil {
 		return false, fmt.Errorf(dbQueryFailedMsg, err)
 	}
@@ -223,13 +240,33 @@ func (s *DBStorage) Has(key string) (bool, error) {
 }
 
 //nolint:dupl // no different type
-func (s *DBStorage) GetCounter(key string) (int64, error) {
+func (s *DBStorage) GetCounter(ctx context.Context, key string) (value int64, err error) {
+	err = timeutils.Retry(
+		ctx,
+		s.retryAttempts,
+		func(ctx context.Context) error {
+			val, err := s.getCounterInternal(ctx, key)
+			value = val
+			return err
+		},
+		func(err error) (needRetry bool) {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				return pgErr.Code == pgerrcode.ConnectionException
+			}
+			return false
+		},
+	)
+	return
+}
+
+func (s *DBStorage) getCounterInternal(ctx context.Context, key string) (int64, error) {
 	if s.transaction != nil {
 		if val, ok := s.transaction.countersToSet[key]; ok {
 			return val, nil
 		}
 	}
-	row := s.db.QueryRow(getCounterRequest, key)
+	row := s.db.QueryRowContext(ctx, getCounterRequest, key)
 	if err := row.Err(); err != nil {
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
@@ -246,13 +283,36 @@ func (s *DBStorage) GetCounter(key string) (int64, error) {
 }
 
 //nolint:dupl // no different type
-func (s *DBStorage) GetGauge(key string) (float64, error) {
+func (s *DBStorage) GetGauge(ctx context.Context, key string) (value float64, err error) {
+	err = timeutils.Retry(
+		ctx,
+		s.retryAttempts,
+		func(ctx context.Context) error {
+			val, err := s.getGaugeInternal(ctx, key)
+			value = val
+			return err
+		},
+		func(err error) (needRetry bool) {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				return pgErr.Code == pgerrcode.ConnectionException
+			}
+			return false
+		},
+	)
+	return
+}
+
+func (s *DBStorage) getGaugeInternal(ctx context.Context, key string) (float64, error) {
 	if s.transaction != nil {
 		if val, ok := s.transaction.gaugesToSet[key]; ok {
 			return val, nil
 		}
 	}
-	row := s.db.QueryRow(getGaugeRequest, key)
+	row := s.db.QueryRowContext(ctx, getGaugeRequest, key)
+	if ctx.Err() != nil {
+		return 0, fmt.Errorf("cancel: %w", ctx.Err())
+	}
 	if err := row.Err(); err != nil {
 		return 0, fmt.Errorf(dbQueryFailedMsg, err)
 	}
@@ -268,8 +328,8 @@ func (s *DBStorage) GetGauge(key string) (float64, error) {
 	}
 }
 
-func (s *DBStorage) GetAll() (map[string]any, error) {
-	rows, err := s.db.Query(getAllRequest) //nolint:sqlclosecheck // rows are closed below
+func (s *DBStorage) GetAll(ctx context.Context) (map[string]any, error) {
+	rows, err := s.db.QueryContext(ctx, getAllRequest) //nolint:sqlclosecheck // rows are closed below
 	if err != nil {
 		return nil, fmt.Errorf(dbQueryFailedMsg, err)
 	}

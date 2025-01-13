@@ -1,6 +1,7 @@
 package backupmemstorage
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"testing"
@@ -37,13 +38,13 @@ func TestFileSaveLoad(t *testing.T) {
 	tID, err := toSave.BeginTransaction()
 	require.NoError(t, err)
 	for k, v := range counters {
-		err := toSave.SetCounter(k, v, tID)
+		err := toSave.SetCounter(context.Background(), k, v, tID)
 		if err != nil {
 			require.NoError(t, err)
 		}
 	}
 	for k, v := range gauges {
-		err := toSave.SetGauge(k, v, tID)
+		err := toSave.SetGauge(context.Background(), k, v, tID)
 		if err != nil {
 			require.NoError(t, err)
 		}
@@ -58,14 +59,14 @@ func TestFileSaveLoad(t *testing.T) {
 	defer loaded.Stop()
 
 	for k, v := range counters {
-		val, err := loaded.GetCounter(k)
+		val, err := loaded.GetCounter(context.Background(), k)
 		require.NoError(t, err)
 		assert.Equal(t, v, val)
 		assert.Equal(t, reflect.TypeOf(v), reflect.TypeOf(val))
 	}
 
 	for k, v := range gauges {
-		val, err := loaded.GetGauge(k)
+		val, err := loaded.GetGauge(context.Background(), k)
 		require.NoError(t, err)
 		assert.Equal(t, v, val)
 		assert.Equal(t, reflect.TypeOf(v), reflect.TypeOf(val))

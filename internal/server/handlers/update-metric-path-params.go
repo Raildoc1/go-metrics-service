@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
@@ -36,7 +37,7 @@ func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	err := h.updateValue(metricType, key, valueStr, requestLogger)
+	err := h.updateValue(r.Context(), metricType, key, valueStr, requestLogger)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrParsing):
@@ -55,7 +56,11 @@ func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http
 	}
 }
 
-func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr string, requestLogger *zap.Logger) error {
+func (h *UpdateMetricPathParamsHandler) updateValue(
+	ctx context.Context,
+	metricType, key, valueStr string,
+	requestLogger *zap.Logger,
+) error {
 	requestLogger.Debug("updating value",
 		zap.String("metricType", metricType),
 		zap.String("key", key),
@@ -67,12 +72,15 @@ func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr st
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrParsing, err)
 		}
-		if err := h.metricUpdater.UpdateOne(protocol.Metrics{
-			ID:    key,
-			MType: protocol.Gauge,
-			Delta: nil,
-			Value: &value,
-		}); err != nil {
+		if err := h.metricUpdater.UpdateOne(
+			ctx,
+			protocol.Metrics{
+				ID:    key,
+				MType: protocol.Gauge,
+				Delta: nil,
+				Value: &value,
+			},
+		); err != nil {
 			return fmt.Errorf("failed to set: %w", err)
 		}
 		return nil
@@ -81,12 +89,15 @@ func (h *UpdateMetricPathParamsHandler) updateValue(metricType, key, valueStr st
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrParsing, err)
 		}
-		if err := h.metricUpdater.UpdateOne(protocol.Metrics{
-			ID:    key,
-			MType: protocol.Counter,
-			Delta: &delta,
-			Value: nil,
-		}); err != nil {
+		if err := h.metricUpdater.UpdateOne(
+			ctx,
+			protocol.Metrics{
+				ID:    key,
+				MType: protocol.Counter,
+				Delta: &delta,
+				Value: nil,
+			},
+		); err != nil {
 			return fmt.Errorf("failed to set: %w", err)
 		}
 		return nil

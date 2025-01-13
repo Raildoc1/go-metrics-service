@@ -46,7 +46,7 @@ func main() {
 	switch {
 	case cfg.Database.ConnectionString != "":
 		dbFactory := database.NewPgxDatabaseFactory(cfg.Database)
-		dbStorage, err := dbstorage.New(dbFactory, logger)
+		dbStorage, err := dbstorage.New(dbFactory, cfg.Database.RetryAttempts, logger)
 		if err != nil {
 			logger.Error("Failed to create database storage", zap.Error(err))
 			return

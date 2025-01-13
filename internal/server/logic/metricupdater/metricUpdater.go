@@ -1,6 +1,7 @@
 package metricupdater
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
@@ -19,11 +20,11 @@ type TransactionsHandler interface {
 }
 
 type GaugeSetter interface {
-	Set(key string, value float64, transactionID data.TransactionID) error
+	Set(ctx context.Context, key string, value float64, transactionID data.TransactionID) error
 }
 
 type CounterChanger interface {
-	Change(key string, delta int64, transactionID data.TransactionID) error
+	Change(ctx context.Context, key string, delta int64, transactionID data.TransactionID) error
 }
 
 type MetricUpdater struct {
@@ -44,12 +45,12 @@ func New(
 	}
 }
 
-func (m *MetricUpdater) UpdateOne(metric protocol.Metrics) error {
+func (m *MetricUpdater) UpdateOne(ctx context.Context, metric protocol.Metrics) error {
 	transactionID, err := m.transactionFactory.BeginTransaction()
 	if err != nil {
 		return fmt.Errorf("failed to create transaction: %w", err)
 	}
-	if err := m.updateInternal(metric, transactionID); err != nil {
+	if err := m.updateInternal(ctx, metric, transactionID); err != nil {
 		rollbackErr := m.transactionFactory.RollbackTransaction(transactionID)
 		if rollbackErr != nil {
 			return fmt.Errorf("failed to update metric: %w, %w", err, rollbackErr)
@@ -62,13 +63,13 @@ func (m *MetricUpdater) UpdateOne(metric protocol.Metrics) error {
 	return nil
 }
 
-func (m *MetricUpdater) UpdateMany(metrics []protocol.Metrics) error {
+func (m *MetricUpdater) UpdateMany(ctx context.Context, metrics []protocol.Metrics) error {
 	transactionID, err := m.transactionFactory.BeginTransaction()
 	if err != nil {
 		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 	for _, metric := range metrics {
-		if err := m.updateInternal(metric, transactionID); err != nil {
+		if err := m.updateInternal(ctx, metric, transactionID); err != nil {
 			rollbackErr := m.transactionFactory.RollbackTransaction(transactionID)
 			if rollbackErr != nil {
 				return fmt.Errorf("failed to update metric: %w, %w", err, rollbackErr)
@@ -82,20 +83,24 @@ func (m *MetricUpdater) UpdateMany(metrics []protocol.Metrics) error {
 	return nil
 }
 
-func (m *MetricUpdater) updateInternal(metric protocol.Metrics, transactionID data.TransactionID) error {
+func (m *MetricUpdater) updateInternal(
+	ctx context.Context,
+	metric protocol.Metrics,
+	transactionID data.TransactionID,
+) error {
 	switch metric.MType {
 	case protocol.Gauge:
 		if metric.Value == nil {
 			return ErrWrongValueType
 		}
-		if err := m.gaugeSetter.Set(metric.ID, *metric.Value, transactionID); err != nil {
+		if err := m.gaugeSetter.Set(ctx, metric.ID, *metric.Value, transactionID); err != nil {
 			return fmt.Errorf("set gauge: %w", err)
 		}
 	case protocol.Counter:
 		if metric.Delta == nil {
 			return ErrWrongValueType
 		}
-		if err := m.counterChanger.Change(metric.ID, *metric.Delta, transactionID); err != nil {
+		if err := m.counterChanger.Change(ctx, metric.ID, *metric.Delta, transactionID); err != nil {
 			return fmt.Errorf("change counter: %w", err)
 		}
 	default:

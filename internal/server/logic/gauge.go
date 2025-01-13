@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"fmt"
 	"go-metrics-service/internal/server/data"
 
@@ -19,9 +20,9 @@ func New(repository GaugeRepository, logger *zap.Logger) *Gauge {
 	}
 }
 
-func (g *Gauge) Set(key string, value float64, transactionID data.TransactionID) error {
+func (g *Gauge) Set(ctx context.Context, key string, value float64, transactionID data.TransactionID) error {
 	g.logger.Debug("Setting", zap.String("key", key), zap.Float64("value", value))
-	err := g.repository.SetGauge(key, value, transactionID)
+	err := g.repository.SetGauge(ctx, key, value, transactionID)
 	if err != nil {
 		return fmt.Errorf("%w: setting gauge '%s' failed", err, key)
 	}

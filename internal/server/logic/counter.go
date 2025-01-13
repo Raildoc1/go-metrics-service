@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"fmt"
 	"go-metrics-service/internal/server/data"
 
@@ -19,9 +20,9 @@ func NewCounter(repository CounterRepository, logger *zap.Logger) *Counter {
 	}
 }
 
-func (c *Counter) Change(key string, delta int64, transactionID data.TransactionID) error {
+func (c *Counter) Change(ctx context.Context, key string, delta int64, transactionID data.TransactionID) error {
 	c.logger.Debug("changing", zap.String("key", key), zap.Int64("delta", delta))
-	hasValue, err := c.repository.Has(key)
+	hasValue, err := c.repository.Has(ctx, key)
 	if err != nil {
 		return fmt.Errorf("hasValue: %w", err)
 	}
@@ -30,13 +31,13 @@ func (c *Counter) Change(key string, delta int64, transactionID data.Transaction
 		prevValue = int64(0)
 	} else {
 		var err error
-		prevValue, err = c.repository.GetCounter(key)
+		prevValue, err = c.repository.GetCounter(ctx, key)
 		if err != nil {
 			return fmt.Errorf("%w: getting counter '%s' failed", err, key)
 		}
 	}
 	newValue := prevValue + delta
-	err = c.repository.SetCounter(key, newValue, transactionID)
+	err = c.repository.SetCounter(ctx, key, newValue, transactionID)
 	if err != nil {
 		return fmt.Errorf("%w: setting counter '%s' failed", err, key)
 	}

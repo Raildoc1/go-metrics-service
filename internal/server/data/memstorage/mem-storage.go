@@ -2,6 +2,7 @@ package memstorage
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -89,7 +90,12 @@ func (s *MemStorage) RollbackTransaction(transactionID data.TransactionID) error
 	return nil
 }
 
-func (s *MemStorage) SetCounter(key string, value int64, transactionID data.TransactionID) error {
+func (s *MemStorage) SetCounter(
+	_ context.Context,
+	key string,
+	value int64,
+	transactionID data.TransactionID,
+) error {
 	if err := s.validateTransactionID(transactionID); err != nil {
 		return err
 	}
@@ -103,7 +109,12 @@ func (s *MemStorage) SetCounter(key string, value int64, transactionID data.Tran
 	return nil
 }
 
-func (s *MemStorage) SetGauge(key string, value float64, transactionID data.TransactionID) error {
+func (s *MemStorage) SetGauge(
+	_ context.Context,
+	key string,
+	value float64,
+	transactionID data.TransactionID,
+) error {
 	if err := s.validateTransactionID(transactionID); err != nil {
 		return err
 	}
@@ -117,7 +128,7 @@ func (s *MemStorage) SetGauge(key string, value float64, transactionID data.Tran
 	return nil
 }
 
-func (s *MemStorage) Has(key string) (bool, error) {
+func (s *MemStorage) Has(_ context.Context, key string) (bool, error) {
 	if s.transaction != nil {
 		if _, ok := s.transaction.countersToSet[key]; ok {
 			return true, nil
@@ -131,7 +142,7 @@ func (s *MemStorage) Has(key string) (bool, error) {
 	return hasCounter || hasGauge, nil
 }
 
-func (s *MemStorage) GetCounter(key string) (int64, error) {
+func (s *MemStorage) GetCounter(_ context.Context, key string) (int64, error) {
 	if s.transaction != nil {
 		if val, ok := s.transaction.countersToSet[key]; ok {
 			return val, nil
@@ -146,7 +157,7 @@ func (s *MemStorage) GetCounter(key string) (int64, error) {
 	return 0, data.ErrNotFound
 }
 
-func (s *MemStorage) GetGauge(key string) (float64, error) {
+func (s *MemStorage) GetGauge(_ context.Context, key string) (float64, error) {
 	if s.transaction != nil {
 		if val, ok := s.transaction.gaugesToSet[key]; ok {
 			return val, nil
@@ -161,7 +172,7 @@ func (s *MemStorage) GetGauge(key string) (float64, error) {
 	return 0, data.ErrNotFound
 }
 
-func (s *MemStorage) GetAll() (map[string]any, error) {
+func (s *MemStorage) GetAll(_ context.Context) (map[string]any, error) {
 	res := make(map[string]any)
 	for k, v := range s.data.Counters {
 		res[k] = v
