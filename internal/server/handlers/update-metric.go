@@ -39,6 +39,7 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	h.logger.Debug("parsed request data", zap.Any("data", requestData))
 	const errUpdate = "update failed"
 	if err := h.update(r.Context(), &requestData); err != nil {
 		switch {

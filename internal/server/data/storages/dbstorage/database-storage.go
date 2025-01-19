@@ -27,6 +27,11 @@ const (
 		);`
 )
 
+const (
+	logArgsName  = "args"
+	logQueryName = "query"
+)
+
 var errNoTransaction = errors.New("no transaction")
 
 type DBFactory interface {
@@ -78,8 +83,8 @@ func (s *DBStorage) Exec(ctx context.Context, query string, args ...any) (sql.Re
 		case errors.Is(err, errNoTransaction):
 			s.logger.Debug(
 				"DB query without transaction",
-				zap.String("query", query),
-				zap.Any("args", args),
+				zap.String(logQueryName, query),
+				zap.Any(logArgsName, args),
 			)
 			return s.db.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 		default:
@@ -88,8 +93,8 @@ func (s *DBStorage) Exec(ctx context.Context, query string, args ...any) (sql.Re
 	}
 	s.logger.Debug(
 		"DB query",
-		zap.String("query", query),
-		zap.Any("args", args),
+		zap.String(logQueryName, query),
+		zap.Any(logArgsName, args),
 	)
 	return tx.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 }
@@ -101,8 +106,8 @@ func (s *DBStorage) QueryRow(ctx context.Context, query string, args ...any) (*s
 		case errors.Is(err, errNoTransaction):
 			s.logger.Debug(
 				"DB query without transaction",
-				zap.String("query", query),
-				zap.Any("args", args),
+				zap.String(logQueryName, query),
+				zap.Any(logArgsName, args),
 			)
 			return s.db.QueryRowContext(ctx, query, args...), nil
 		default:
@@ -111,8 +116,8 @@ func (s *DBStorage) QueryRow(ctx context.Context, query string, args ...any) (*s
 	}
 	s.logger.Debug(
 		"DB query",
-		zap.String("query", query),
-		zap.Any("args", args),
+		zap.String(logQueryName, query),
+		zap.Any(logArgsName, args),
 	)
 	return tx.QueryRowContext(ctx, query, args...), nil
 }
@@ -124,8 +129,8 @@ func (s *DBStorage) Query(ctx context.Context, query string, args ...any) (*sql.
 		case errors.Is(err, errNoTransaction):
 			s.logger.Debug(
 				"DB query without transaction",
-				zap.String("query", query),
-				zap.Any("args", args),
+				zap.String(logQueryName, query),
+				zap.Any(logArgsName, args),
 			)
 			return s.db.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 		default:
@@ -134,8 +139,8 @@ func (s *DBStorage) Query(ctx context.Context, query string, args ...any) (*sql.
 	}
 	s.logger.Debug(
 		"DB query",
-		zap.String("query", query),
-		zap.Any("args", args),
+		zap.String(logQueryName, query),
+		zap.Any(logArgsName, args),
 	)
 	return tx.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 }
