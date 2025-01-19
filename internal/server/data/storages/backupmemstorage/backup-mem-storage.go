@@ -3,7 +3,7 @@ package backupmemstorage
 import (
 	"errors"
 	"fmt"
-	"go-metrics-service/internal/server/data/memstorage"
+	"go-metrics-service/internal/server/data/storages/memstorage"
 	"os"
 	"path/filepath"
 	"time"
@@ -33,14 +33,20 @@ func New(cfg Config, logger *zap.Logger) (*BackupMemStorage, error) {
 	if !cfg.NeedRestore {
 		return newEmpty(cfg.Backup, logger), nil
 	}
-	if _, err := os.Stat(cfg.Backup.FilePath); errors.Is(err, os.ErrNotExist) {
-		return newEmpty(cfg.Backup, logger), nil
-	}
-	str, err := loadFromFile(cfg.Backup, logger)
+	file, err := os.Open(cfg.Backup.FilePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to restore mem-storage: %w", err)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			return newEmpty(cfg.Backup, logger), nil
+		default:
+			return nil, fmt.Errorf("failed to open file: %w", err)
+		}
 	}
-	return str, nil
+	ms, err := memstorage.LoadFrom(file, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load from file: %w", err)
+	}
+	return create(cfg.Backup, ms, logger), nil
 }
 
 func (s *BackupMemStorage) Stop() {
@@ -49,19 +55,7 @@ func (s *BackupMemStorage) Stop() {
 }
 
 func newEmpty(backupConfig BackupConfig, logger *zap.Logger) *BackupMemStorage {
-	return create(backupConfig, memstorage.NewMemStorage(logger), logger)
-}
-
-func loadFromFile(backupConfig BackupConfig, logger *zap.Logger) (*BackupMemStorage, error) {
-	file, err := os.Open(backupConfig.FilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	ms, err := memstorage.LoadFrom(file, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load from file: %w", err)
-	}
-	return create(backupConfig, ms, logger), nil
+	return create(backupConfig, memstorage.New(logger), logger)
 }
 
 func create(backupConfig BackupConfig, ms *memstorage.MemStorage, logger *zap.Logger) *BackupMemStorage {
@@ -100,10 +94,13 @@ func (s *BackupMemStorage) saveToFileLogError(filePath string) {
 
 func (s *BackupMemStorage) saveToFile(filePath string) error {
 	dir := filepath.Dir(filePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		const dirPerm = 0o700
-		err = os.MkdirAll(dir, dirPerm)
-		if err != nil {
+	const dirPerm = 0o700
+	err := os.MkdirAll(dir, dirPerm)
+	if err != nil {
+		switch {
+		case errors.Is(err, os.ErrExist):
+			// Ignore.
+		default:
 			return fmt.Errorf("failed to create directory: %w", err)
 		}
 	}

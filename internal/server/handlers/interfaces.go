@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data"
 )
 
 // Errors.
@@ -18,12 +17,10 @@ var (
 // Data.
 
 type GaugeRepository interface {
-	SetGauge(ctx context.Context, key string, value float64, transactionID data.TransactionID) error
 	GetGauge(ctx context.Context, key string) (float64, error)
 }
 
 type CounterRepository interface {
-	SetCounter(ctx context.Context, key string, value int64, transactionID data.TransactionID) error
 	GetCounter(ctx context.Context, key string) (int64, error)
 }
 
@@ -33,15 +30,7 @@ type AllMetricsRepository interface {
 
 // Logic.
 
-type MetricUpdater interface {
-	UpdateOne(ctx context.Context, metric protocol.Metrics) error
+type MetricController interface {
+	Update(ctx context.Context, metric protocol.Metrics) error
 	UpdateMany(ctx context.Context, metrics []protocol.Metrics) error
-}
-
-type CounterLogic interface {
-	Change(ctx context.Context, key string, delta int64, transactionID data.TransactionID) error
-}
-
-type GaugeLogic interface {
-	Set(ctx context.Context, key string, value float64, transactionID data.TransactionID) error
 }

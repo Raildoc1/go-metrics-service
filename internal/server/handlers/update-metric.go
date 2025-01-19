@@ -13,17 +13,17 @@ import (
 )
 
 type UpdateMetricValueHandler struct {
-	metricUpdater MetricUpdater
-	logger        *zap.Logger
+	metricController MetricController
+	logger           *zap.Logger
 }
 
 func NewUpdateMetric(
-	metricUpdater MetricUpdater,
+	metricUpdater MetricController,
 	logger *zap.Logger,
 ) http.Handler {
 	return &UpdateMetricValueHandler{
-		metricUpdater: metricUpdater,
-		logger:        logger,
+		metricController: metricUpdater,
+		logger:           logger,
 	}
 }
 
@@ -68,14 +68,14 @@ func (h *UpdateMetricValueHandler) update(ctx context.Context, requestData *prot
 		if requestData.Value == nil {
 			return ErrWrongValueType
 		}
-		if err := h.metricUpdater.UpdateOne(ctx, *requestData); err != nil {
+		if err := h.metricController.Update(ctx, *requestData); err != nil {
 			return fmt.Errorf("set gauge: %w", err)
 		}
 	case protocol.Counter:
 		if requestData.Delta == nil {
 			return ErrWrongValueType
 		}
-		if err := h.metricUpdater.UpdateOne(ctx, *requestData); err != nil {
+		if err := h.metricController.Update(ctx, *requestData); err != nil {
 			return fmt.Errorf("change counter: %w", err)
 		}
 	default:

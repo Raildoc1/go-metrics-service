@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/controllers"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
-	"go-metrics-service/internal/server/logic/metricupdater"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
 
@@ -14,13 +14,15 @@ import (
 	"go.uber.org/zap"
 )
 
-type Storage interface {
+type Repository interface {
 	handlers.GaugeRepository
 	handlers.CounterRepository
 	handlers.AllMetricsRepository
-	logic.CounterRepository
-	logic.GaugeRepository
-	metricupdater.TransactionsHandler
+	logic.Repository
+}
+
+type TransactionManager interface {
+	controllers.TransactionManager
 }
 
 type Server struct {
@@ -31,13 +33,14 @@ type Server struct {
 
 func New(
 	cfg Config,
-	storage Storage,
+	repository Repository,
+	transactionManager TransactionManager,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 ) *Server {
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
-		Handler: createMux(storage, pingables, logger),
+		Handler: createMux(repository, transactionManager, pingables, logger),
 	}
 
 	res := &Server{
@@ -66,48 +69,48 @@ func (s *Server) Close() {
 }
 
 func createMux(
-	storage Storage,
+	repository Repository,
+	transactionManager TransactionManager,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 ) *chi.Mux {
-	counterLogic := logic.NewCounter(storage, logger)
-	gaugeLogic := logic.New(storage, logger)
-	metricUpdater := metricupdater.New(storage, gaugeLogic, counterLogic)
+	service := logic.NewService(repository, logger)
+	controller := controllers.NewController(transactionManager, service, logger)
 
 	updateMetricPathParamsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetricPathParams(metricUpdater, logger)).
+		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	updateMetricHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetric(metricUpdater, logger)).
+		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	updateMetricsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetrics(metricUpdater, logger)).
+		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValuePathParams(storage, storage, logger)).
+		NewBuilder(handlers.NewGetMetricValuePathParams(repository, repository, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
 	getMetricValueHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValue(storage, storage, logger)).
+		NewBuilder(handlers.NewGetMetricValue(repository, repository, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(storage, logger)).
+		NewBuilder(handlers.NewGetAllMetrics(repository, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).

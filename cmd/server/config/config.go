@@ -5,7 +5,7 @@ import (
 	"fmt"
 	common "go-metrics-service/cmd/common/config"
 	"go-metrics-service/internal/server"
-	"go-metrics-service/internal/server/data/backupmemstorage"
+	"go-metrics-service/internal/server/data/storages/backupmemstorage"
 	"go-metrics-service/internal/server/database"
 	"os"
 	"strconv"
@@ -26,10 +26,11 @@ const (
 const (
 	defaultFileStoragePath       = "./localstorage/data.gz"
 	defaultServerShutdownTimeout = 5
-	defaultRetryAttempts         = 3
 	defaultStoreInterval         = 300
 	defaultRestore               = true
 )
+
+var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
 
 type Config struct {
 	Database         database.Config

@@ -5,9 +5,12 @@ import (
 	"go-metrics-service/cmd/server/config"
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
-	"go-metrics-service/internal/server/data/backupmemstorage"
-	"go-metrics-service/internal/server/data/dbstorage"
-	"go-metrics-service/internal/server/data/memstorage"
+	"go-metrics-service/internal/server/data/repositories/dbrepository"
+	"go-metrics-service/internal/server/data/repositories/memrepository"
+	"go-metrics-service/internal/server/data/storages"
+	"go-metrics-service/internal/server/data/storages/backupmemstorage"
+	"go-metrics-service/internal/server/data/storages/dbstorage"
+	"go-metrics-service/internal/server/data/storages/memstorage"
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
 	"log"
@@ -41,7 +44,8 @@ func main() {
 	logger.Sugar().Infoln("Configuration: ", string(jsCfg))
 
 	var pingables []handlers.Pingable
-	var storage server.Storage
+	var rep server.Repository
+	var tm server.TransactionManager
 
 	switch {
 	case cfg.Database.ConnectionString != "":
@@ -52,7 +56,8 @@ func main() {
 			return
 		}
 		defer dbStorage.Close()
-		storage = dbStorage
+		rep = dbrepository.New(dbStorage, logger)
+		tm = dbstorage.NewTransactionsManager(dbStorage, logger)
 	case cfg.BackupMemStorage.Backup.FilePath != "":
 		backupMemStorage, err := backupmemstorage.New(cfg.BackupMemStorage, logger)
 		if err != nil {
@@ -60,12 +65,15 @@ func main() {
 			return
 		}
 		defer backupMemStorage.Stop()
-		storage = backupMemStorage
+		rep = memrepository.New(backupMemStorage, logger)
+		tm = storages.NewDummyTransactionsManager()
 	default:
-		storage = memstorage.NewMemStorage(logger)
+		memStorage := memstorage.New(logger)
+		rep = memrepository.New(memStorage, logger)
+		tm = storages.NewDummyTransactionsManager()
 	}
 
-	srv := server.New(cfg.Server, storage, pingables, logger)
+	srv := server.New(cfg.Server, rep, tm, pingables, logger)
 	defer srv.Close()
 
 	lifecycle(logger)

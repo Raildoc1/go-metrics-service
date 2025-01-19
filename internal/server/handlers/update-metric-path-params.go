@@ -13,17 +13,17 @@ import (
 )
 
 type UpdateMetricPathParamsHandler struct {
-	metricUpdater MetricUpdater
-	logger        *zap.Logger
+	metricController MetricController
+	logger           *zap.Logger
 }
 
 func NewUpdateMetricPathParams(
-	metricUpdater MetricUpdater,
+	metricUpdater MetricController,
 	logger *zap.Logger,
 ) *UpdateMetricPathParamsHandler {
 	return &UpdateMetricPathParamsHandler{
-		metricUpdater: metricUpdater,
-		logger:        logger,
+		metricController: metricUpdater,
+		logger:           logger,
 	}
 }
 
@@ -72,7 +72,7 @@ func (h *UpdateMetricPathParamsHandler) updateValue(
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrParsing, err)
 		}
-		if err := h.metricUpdater.UpdateOne(
+		if err := h.metricController.Update(
 			ctx,
 			protocol.Metrics{
 				ID:    key,
@@ -89,7 +89,7 @@ func (h *UpdateMetricPathParamsHandler) updateValue(
 		if err != nil {
 			return fmt.Errorf("%w: %w", ErrParsing, err)
 		}
-		if err := h.metricUpdater.UpdateOne(
+		if err := h.metricController.Update(
 			ctx,
 			protocol.Metrics{
 				ID:    key,

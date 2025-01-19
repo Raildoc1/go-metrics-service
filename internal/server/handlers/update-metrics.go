@@ -9,17 +9,17 @@ import (
 )
 
 type UpdateMetricsValueHandler struct {
-	metricUpdater MetricUpdater
-	logger        *zap.Logger
+	metricController MetricController
+	logger           *zap.Logger
 }
 
 func NewUpdateMetrics(
-	metricUpdater MetricUpdater,
+	metricController MetricController,
 	logger *zap.Logger,
 ) http.Handler {
 	return &UpdateMetricsValueHandler{
-		metricUpdater: metricUpdater,
-		logger:        logger,
+		metricController: metricController,
+		logger:           logger,
 	}
 }
 
@@ -35,7 +35,7 @@ func (h *UpdateMetricsValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.metricUpdater.UpdateMany(r.Context(), requestData); err != nil {
+	if err := h.metricController.UpdateMany(r.Context(), requestData); err != nil {
 		h.logger.Error("failed to update metrics", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return

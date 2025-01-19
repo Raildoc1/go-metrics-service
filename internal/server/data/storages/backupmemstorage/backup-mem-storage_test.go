@@ -1,7 +1,6 @@
 package backupmemstorage
 
 import (
-	"context"
 	"os"
 	"reflect"
 	"testing"
@@ -35,23 +34,13 @@ func TestFileSaveLoad(t *testing.T) {
 	}()
 
 	toSave := newEmpty(backupConfig, zap.NewNop())
-	tID, err := toSave.BeginTransaction()
-	require.NoError(t, err)
 	for k, v := range counters {
-		err := toSave.SetCounter(context.Background(), k, v, tID)
-		if err != nil {
-			require.NoError(t, err)
-		}
+		toSave.Set(k, v)
 	}
 	for k, v := range gauges {
-		err := toSave.SetGauge(context.Background(), k, v, tID)
-		if err != nil {
-			require.NoError(t, err)
-		}
+		toSave.Set(k, v)
 	}
-	err = toSave.CommitTransaction(tID)
-	require.NoError(t, err)
-	err = toSave.saveToFile(filePath)
+	err := toSave.saveToFile(filePath)
 	require.NoError(t, err)
 
 	loaded, err := loadFromFile(backupConfig, zap.NewNop())
@@ -59,15 +48,15 @@ func TestFileSaveLoad(t *testing.T) {
 	defer loaded.Stop()
 
 	for k, v := range counters {
-		val, err := loaded.GetCounter(context.Background(), k)
-		require.NoError(t, err)
+		val, ok := loaded.Get(k)
+		require.True(t, ok)
 		assert.Equal(t, v, val)
 		assert.Equal(t, reflect.TypeOf(v), reflect.TypeOf(val))
 	}
 
 	for k, v := range gauges {
-		val, err := loaded.GetGauge(context.Background(), k)
-		require.NoError(t, err)
+		val, ok := loaded.Get(k)
+		require.True(t, ok)
 		assert.Equal(t, v, val)
 		assert.Equal(t, reflect.TypeOf(v), reflect.TypeOf(val))
 	}

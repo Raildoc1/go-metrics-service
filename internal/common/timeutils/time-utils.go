@@ -8,13 +8,12 @@ import (
 
 func Retry(
 	ctx context.Context,
-	attempts int,
+	attemptDelays []time.Duration,
 	function func(context.Context) error,
 	onFailed func(error) (needRetry bool),
 ) error {
 	var err error
-	delay := time.Second
-	for range attempts {
+	for _, delay := range attemptDelays {
 		if ctx.Err() != nil {
 			return fmt.Errorf("retry canceled: %w", ctx.Err())
 		}
@@ -29,7 +28,6 @@ func Retry(
 		if err != nil {
 			return err
 		}
-		delay *= 2
 	}
 	return err
 }

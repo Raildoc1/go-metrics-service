@@ -21,8 +21,9 @@ const (
 const (
 	defaultSendingIntervalSeconds = 10
 	defaultPollingIntervalSeconds = 2
-	defaultRetryAttempts          = 3
 )
+
+var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
 
 type Config struct {
 	Agent      agent.Config

@@ -4,7 +4,7 @@ import "time"
 
 type Config struct {
 	ServerAddress   string
-	RetryAttempts   int
+	RetryAttempts   []time.Duration
 	PollingInterval time.Duration
 	SendingInterval time.Duration
 }

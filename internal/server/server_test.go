@@ -3,7 +3,9 @@ package server
 import (
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/memstorage"
+	"go-metrics-service/internal/server/data/repositories/memrepository"
+	"go-metrics-service/internal/server/data/storages"
+	"go-metrics-service/internal/server/data/storages/memstorage"
 	"go-metrics-service/internal/server/handlers"
 	"net/http"
 	"net/http/httptest"
@@ -17,8 +19,10 @@ import (
 
 func setupServer() *httptest.Server {
 	logger := logging.CreateZapLogger(true)
-	memStorage := memstorage.NewMemStorage(logger)
-	mux := createMux(memStorage, make([]handlers.Pingable, 0), logger)
+	memStorage := memstorage.New(logger)
+	memRepository := memrepository.New(memStorage, logger)
+	transactionManager := storages.NewDummyTransactionsManager()
+	mux := createMux(memRepository, transactionManager, make([]handlers.Pingable, 0), logger)
 	return httptest.NewServer(mux)
 }
 
