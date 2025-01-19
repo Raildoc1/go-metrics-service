@@ -21,8 +21,8 @@ const (
 		create table if not exists metrics
 		(
 			key           varchar(63) not null primary key,
-			gauge_value   double precision,
-			counter_value bigint
+			gauge_value   double precision null,
+			counter_value bigint null
 			check ((counter_value is null) != (gauge_value is null))
 		);`
 )
