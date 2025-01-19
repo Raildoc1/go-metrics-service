@@ -43,7 +43,13 @@ func TestFileSaveLoad(t *testing.T) {
 	err := toSave.saveToFile(filePath)
 	require.NoError(t, err)
 
-	loaded, err := loadFromFile(backupConfig, zap.NewNop())
+	loaded, err := New(
+		Config{
+			Backup:      backupConfig,
+			NeedRestore: true,
+		},
+		zap.NewNop(),
+	)
 	require.NoError(t, err)
 	defer loaded.Stop()
 

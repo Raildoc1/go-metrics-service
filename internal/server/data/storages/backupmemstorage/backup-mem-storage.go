@@ -42,6 +42,12 @@ func New(cfg Config, logger *zap.Logger) (*BackupMemStorage, error) {
 			return nil, fmt.Errorf("failed to open file: %w", err)
 		}
 	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Error("failed to close file", zap.Error(err))
+		}
+	}(file)
 	ms, err := memstorage.LoadFrom(file, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load from file: %w", err)
