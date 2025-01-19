@@ -115,10 +115,12 @@ func (r *DBRepository) setMany(ctx context.Context, dbFieldName string, values m
 		values %s
 		on conflict (key)
 		    do update set %s = excluded.%s`
+	const firstArgNumber = 1
+	const argsIsRow = 2
 	query := fmt.Sprintf(
 		queryPattern,
 		dbFieldName,
-		formatValuesRows(1, 2, len(values)),
+		formatValuesRows(firstArgNumber, argsIsRow, len(values)),
 		dbFieldName,
 		dbFieldName,
 	)

@@ -71,12 +71,30 @@ func getInternal[T any](r *MemRepository, key string, defaultValue T) (T, error)
 }
 
 func (r *MemRepository) SetCounter(_ context.Context, key string, value int64) error {
+	if err := checkType[int64](r, key); err != nil {
+		return err
+	}
 	r.storage.Set(key, value)
 	return nil
 }
 
 func (r *MemRepository) SetGauge(_ context.Context, key string, value float64) error {
+	if err := checkType[float64](r, key); err != nil {
+		return err
+	}
 	r.storage.Set(key, value)
+	return nil
+}
+
+func checkType[T any](r *MemRepository, key string) error {
+	if val, ok := r.storage.Get(key); ok {
+		switch val.(type) {
+		case T:
+			return nil
+		default:
+			return data.ErrWrongType
+		}
+	}
 	return nil
 }
 
