@@ -27,6 +27,8 @@ const (
 		);`
 )
 
+var errNoTransaction = errors.New("no transaction")
+
 type DBFactory interface {
 	Create() (*sql.DB, error)
 }
@@ -72,40 +74,76 @@ func (s *DBStorage) WithTransaction(ctx context.Context) (context.Context, *sql.
 func (s *DBStorage) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	tx, err := getTransaction(ctx)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, errNoTransaction):
+			s.logger.Debug(
+				"DB query without transaction",
+				zap.String("query", query),
+				zap.Any("args", args),
+			)
+			return s.db.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
+		default:
+			return nil, err
+		}
 	}
-	if tx == nil {
-		return s.db.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
-	}
+	s.logger.Debug(
+		"DB query",
+		zap.String("query", query),
+		zap.Any("args", args),
+	)
 	return tx.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 }
 
 func (s *DBStorage) QueryRow(ctx context.Context, query string, args ...any) (*sql.Row, error) {
 	tx, err := getTransaction(ctx)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, errNoTransaction):
+			s.logger.Debug(
+				"DB query without transaction",
+				zap.String("query", query),
+				zap.Any("args", args),
+			)
+			return s.db.QueryRowContext(ctx, query, args...), nil
+		default:
+			return nil, err
+		}
 	}
-	if tx == nil {
-		return s.db.QueryRowContext(ctx, query, args...), nil //nolint:wrapcheck // unnecessary
-	}
+	s.logger.Debug(
+		"DB query",
+		zap.String("query", query),
+		zap.Any("args", args),
+	)
 	return tx.QueryRowContext(ctx, query, args...), nil
 }
 
 func (s *DBStorage) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	tx, err := getTransaction(ctx)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, errNoTransaction):
+			s.logger.Debug(
+				"DB query without transaction",
+				zap.String("query", query),
+				zap.Any("args", args),
+			)
+			return s.db.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
+		default:
+			return nil, err
+		}
 	}
-	if tx == nil {
-		return s.db.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
-	}
+	s.logger.Debug(
+		"DB query",
+		zap.String("query", query),
+		zap.Any("args", args),
+	)
 	return tx.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 }
 
 func getTransaction(ctx context.Context) (*sql.Tx, error) {
 	txVal := ctx.Value(transactionKey)
 	if txVal == nil {
-		return nil, nil
+		return nil, errNoTransaction
 	}
 	tx, ok := txVal.(*sql.Tx)
 	if !ok {

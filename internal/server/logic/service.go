@@ -114,5 +114,12 @@ func (s *Service) getChangedCounter(ctx context.Context, key string, delta int64
 		}
 	}
 	newValue := prevValue + delta
+	s.l.Debug(
+		"change counter",
+		zap.String("key", key),
+		zap.Int64("value", newValue),
+		zap.Int64("delta", delta),
+		zap.Int64("prevValue", prevValue),
+	)
 	return newValue, nil
 }
