@@ -23,6 +23,16 @@ type Service struct {
 	l *zap.Logger
 }
 
+type CounterDiff struct {
+	Key   string
+	Delta int64
+}
+
+type GaugeDiff struct {
+	Key      string
+	NewValue float64
+}
+
 func NewService(r Repository, l *zap.Logger) *Service {
 	return &Service{
 		r: r,
@@ -30,39 +40,19 @@ func NewService(r Repository, l *zap.Logger) *Service {
 	}
 }
 
-func (s *Service) HandleMany(ctx context.Context, values map[string]any) error {
-	gauges := make(map[string]float64)
-	counters := make(map[string]int64)
-	for k, v := range values {
-		switch casted := v.(type) {
-		case float64:
-			gauges[k] = casted
-		case int64:
-			counters[k] = casted
-		default:
-			return fmt.Errorf("invalid value type: %T", casted)
-		}
-	}
-	err := s.SetGauges(ctx, gauges)
-	if err != nil {
-		return err
-	}
-	err = s.ChangeCounters(ctx, counters)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Service) SetGauge(ctx context.Context, key string, value float64) error {
-	err := s.r.SetGauge(ctx, key, value)
+func (s *Service) UpdateGauge(ctx context.Context, diff GaugeDiff) error {
+	err := s.r.SetGauge(ctx, diff.Key, diff.NewValue)
 	if err != nil {
 		return fmt.Errorf("failed to set gauge: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) SetGauges(ctx context.Context, values map[string]float64) error {
+func (s *Service) UpdateGauges(ctx context.Context, diffs []GaugeDiff) error {
+	values := make(map[string]float64)
+	for _, diff := range diffs {
+		values[diff.Key] = diff.NewValue
+	}
 	err := s.r.SetGauges(ctx, values)
 	if err != nil {
 		return fmt.Errorf("failed to set gauges: %w", err)
@@ -70,26 +60,30 @@ func (s *Service) SetGauges(ctx context.Context, values map[string]float64) erro
 	return nil
 }
 
-func (s *Service) ChangeCounter(ctx context.Context, key string, delta int64) error {
-	newValue, err := s.getChangedCounter(ctx, key, delta)
+func (s *Service) UpdateCounter(ctx context.Context, diff CounterDiff) error {
+	newValue, err := s.getChangedCounter(ctx, diff.Key, diff.Delta)
 	if err != nil {
 		return err
 	}
-	err = s.r.SetCounter(ctx, key, newValue)
+	err = s.r.SetCounter(ctx, diff.Key, newValue)
 	if err != nil {
 		return fmt.Errorf("failed to set counter: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) ChangeCounters(ctx context.Context, deltas map[string]int64) error {
-	values := make(map[string]int64, len(deltas))
-	for k, d := range deltas {
-		newValue, err := s.getChangedCounter(ctx, k, d)
-		if err != nil {
-			return err
+func (s *Service) UpdateCounters(ctx context.Context, diffs []CounterDiff) error {
+	values := make(map[string]int64)
+	for _, diff := range diffs {
+		if _, ok := values[diff.Key]; ok {
+			values[diff.Key] += diff.Delta
+		} else {
+			newValue, err := s.getChangedCounter(ctx, diff.Key, diff.Delta)
+			if err != nil {
+				return err
+			}
+			values[diff.Key] = newValue
 		}
-		values[k] = newValue
 	}
 	err := s.r.SetCounters(ctx, values)
 	if err != nil {
