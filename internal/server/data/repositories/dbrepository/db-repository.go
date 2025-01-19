@@ -124,7 +124,7 @@ func (r *DBRepository) setMany(ctx context.Context, dbFieldName string, values m
 		dbFieldName,
 		dbFieldName,
 	)
-	args := make([]any, 0, len(values)*2)
+	args := make([]any, 0, len(values)*2) //nolint:gomnd // no magic numbers
 	for key, value := range values {
 		args = append(args, key, value)
 	}

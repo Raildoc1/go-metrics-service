@@ -74,6 +74,9 @@ func (s *DBStorage) Exec(ctx context.Context, query string, args ...any) (sql.Re
 	if err != nil {
 		return nil, err
 	}
+	if tx == nil {
+		return s.db.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
+	}
 	return tx.ExecContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 }
 
@@ -81,6 +84,9 @@ func (s *DBStorage) QueryRow(ctx context.Context, query string, args ...any) (*s
 	tx, err := getTransaction(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if tx == nil {
+		return s.db.QueryRowContext(ctx, query, args...), nil //nolint:wrapcheck // unnecessary
 	}
 	return tx.QueryRowContext(ctx, query, args...), nil
 }
@@ -90,13 +96,16 @@ func (s *DBStorage) Query(ctx context.Context, query string, args ...any) (*sql.
 	if err != nil {
 		return nil, err
 	}
+	if tx == nil {
+		return s.db.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
+	}
 	return tx.QueryContext(ctx, query, args...) //nolint:wrapcheck // unnecessary
 }
 
 func getTransaction(ctx context.Context) (*sql.Tx, error) {
 	txVal := ctx.Value(transactionKey)
 	if txVal == nil {
-		return nil, errors.New("no transaction set")
+		return nil, nil
 	}
 	tx, ok := txVal.(*sql.Tx)
 	if !ok {
