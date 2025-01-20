@@ -18,6 +18,11 @@ func withHashValidation(h http.Handler, hasher hash.Hash, logger *zap.Logger) ht
 			h.ServeHTTP(w, r)
 			return
 		}
+		receivedHashVal := r.Header.Get(protocol.HashHeader)
+		if receivedHashVal == "" {
+			h.ServeHTTP(w, r)
+			return
+		}
 		requestLogger := handlers.NewRequestLogger(logger, r)
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -36,7 +41,6 @@ func withHashValidation(h http.Handler, hasher hash.Hash, logger *zap.Logger) ht
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		calculatedHashVal := hex.EncodeToString(hasher.Sum(nil))
-		receivedHashVal := r.Header.Get(protocol.HashHeader)
 		if calculatedHashVal != receivedHashVal {
 			requestLogger.Debug(
 				"hash mismatch",

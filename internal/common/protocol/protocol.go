@@ -12,7 +12,7 @@ const (
 )
 
 const (
-	HashHeader = "Hashsha256"
+	HashHeader = "HashSHA256"
 )
 
 const (
