@@ -88,7 +88,9 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 	err := compression.GzipCompress(
 		metrics,
 		func(writer io.Writer) compression.Encoder {
-			return json.NewEncoder(writer)
+			je := json.NewEncoder(writer)
+			je.SetIndent("", "")
+			return je
 		},
 		&body,
 		gzip.BestSpeed,
@@ -97,6 +99,13 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 	if err != nil {
 		return fmt.Errorf("failed to compress request: %w", err)
 	}
+
+	//var testBody bytes.Buffer
+	//je := json.NewEncoder(&testBody)
+	//je.SetIndent("", "")
+	//je.SetEscapeHTML(false)
+	//je.Encode(metrics)
+	//s.logger.Debug("Test", zap.String("testBody", testBody.String()))
 
 	req := resty.New().
 		R().
