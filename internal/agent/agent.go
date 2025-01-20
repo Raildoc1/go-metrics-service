@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
 	"go-metrics-service/internal/agent/config"
 	pollerPkg "go-metrics-service/internal/agent/poller"
@@ -19,7 +21,8 @@ import (
 func Run(cfg config.Config, logger *zap.Logger) {
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage)
-	sender := senderPkg.New(cfg.ServerAddress, storage, logger)
+	hash := hmac.New(sha256.New, []byte(cfg.SHA256Key))
+	sender := senderPkg.New(cfg.ServerAddress, storage, logger, hash)
 
 	lifecycle(cfg, poller, sender, logger)
 }

@@ -22,7 +22,13 @@ func setupServer() *httptest.Server {
 	memStorage := memstorage.New(logger)
 	memRepository := memrepository.New(memStorage, logger)
 	transactionManager := storages.NewDummyTransactionsManager()
-	mux := createMux(memRepository, transactionManager, make([]handlers.Pingable, 0), logger)
+	mux := createMux(
+		nil,
+		memRepository,
+		transactionManager,
+		make([]handlers.Pingable, 0),
+		logger,
+	)
 	return httptest.NewServer(mux)
 }
 

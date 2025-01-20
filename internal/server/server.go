@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
@@ -9,6 +11,7 @@ import (
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
+	"hash"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -39,9 +42,14 @@ func New(
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 ) *Server {
+	var h hash.Hash = nil
+	if cfg.SHA256Key != "" {
+		h = hmac.New(sha256.New, []byte(cfg.SHA256Key))
+	}
+
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
-		Handler: createMux(repository, transactionManager, pingables, logger),
+		Handler: createMux(h, repository, transactionManager, pingables, logger),
 	}
 
 	res := &Server{
@@ -70,6 +78,7 @@ func (s *Server) Shutdown() error {
 }
 
 func createMux(
+	hash hash.Hash,
 	repository Repository,
 	transactionManager TransactionManager,
 	pingables []handlers.Pingable,
@@ -82,18 +91,21 @@ func createMux(
 		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
+		WithHash(hash, logger).
 		Build()
 
 	updateMetricHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
+		WithHash(hash, logger).
 		Build()
 
 	updateMetricsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
+		WithHash(hash, logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
@@ -101,6 +113,7 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
+		WithHash(hash, logger).
 		Build()
 
 	getMetricValueHandler := middleware.
@@ -108,6 +121,7 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
+		WithHash(hash, logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
@@ -115,11 +129,13 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
+		WithHash(hash, logger).
 		Build()
 
 	pingHandler := middleware.
 		NewBuilder(handlers.NewPing(pingables, logger)).
 		WithLogger(logger).
+		WithHash(hash, logger).
 		Build()
 
 	router := chi.NewRouter()

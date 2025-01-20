@@ -72,6 +72,12 @@ func Load() (Config, error) {
 		"Database connection string",
 	)
 
+	sha256Key := flag.String(
+		common.SHA256KeyFlag,
+		"",
+		"SHA256 key",
+	)
+
 	flag.Parse()
 
 	if valStr, ok := os.LookupEnv(common.ServerAddressEnv); ok {
@@ -102,6 +108,10 @@ func Load() (Config, error) {
 		*dbConnectionString = valStr
 	}
 
+	if valStr, ok := os.LookupEnv(common.SHA256KeyEnv); ok {
+		*sha256Key = valStr
+	}
+
 	return Config{
 		Database: database.Config{
 			ConnectionString: *dbConnectionString,
@@ -116,6 +126,7 @@ func Load() (Config, error) {
 		},
 		Server: server.Config{
 			ServerAddress:   *serverAddress,
+			SHA256Key:       *sha256Key,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
 		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,

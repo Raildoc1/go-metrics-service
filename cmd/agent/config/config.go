@@ -49,6 +49,12 @@ func Load() (Config, error) {
 		"Metrics polling frequency in seconds",
 	)
 
+	sha256Key := flag.String(
+		commonConfig.SHA256KeyFlag,
+		"",
+		"SHA256 key",
+	)
+
 	flag.Parse()
 
 	if *sendingIntervalSeconds <= 0 {
@@ -79,6 +85,10 @@ func Load() (Config, error) {
 		*pollingIntervalSeconds = val
 	}
 
+	if valStr, ok := os.LookupEnv(commonConfig.SHA256KeyEnv); ok {
+		*sha256Key = valStr
+	}
+
 	if *sendingIntervalSeconds <= 0 {
 		return Config{}, errors.New("sending frequency must be greater than zero")
 	}
@@ -93,6 +103,7 @@ func Load() (Config, error) {
 	return Config{
 		Agent: agent.Config{
 			ServerAddress:   *serverAddress,
+			SHA256Key:       *sha256Key,
 			SendingInterval: sendingFreq,
 			PollingInterval: pollingFreq,
 			RetryAttempts:   defaultRetryAttempts,

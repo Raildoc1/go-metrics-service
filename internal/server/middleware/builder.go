@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"hash"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -28,6 +29,11 @@ func (b *Builder) WithRequestDecompression(logger *zap.Logger) *Builder {
 
 func (b *Builder) WithResponseCompression(logger *zap.Logger) *Builder {
 	b.httpHandler = withResponseCompression(b.httpHandler, logger)
+	return b
+}
+
+func (b *Builder) WithHash(hash hash.Hash, logger *zap.Logger) *Builder {
+	b.httpHandler = withHash(b.httpHandler, hash, logger)
 	return b
 }
 
