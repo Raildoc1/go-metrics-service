@@ -78,7 +78,7 @@ func (s *Server) Shutdown() error {
 }
 
 func createMux(
-	hash hash.Hash,
+	h hash.Hash,
 	repository Repository,
 	transactionManager TransactionManager,
 	pingables []handlers.Pingable,
@@ -91,21 +91,21 @@ func createMux(
 		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	updateMetricHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	updateMetricsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
@@ -113,7 +113,7 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	getMetricValueHandler := middleware.
@@ -121,7 +121,7 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
@@ -129,13 +129,13 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	pingHandler := middleware.
 		NewBuilder(handlers.NewPing(pingables, logger)).
 		WithLogger(logger).
-		WithHash(hash, logger).
+		WithHash(h, logger).
 		Build()
 
 	router := chi.NewRouter()

@@ -34,13 +34,13 @@ func New(
 	host string,
 	storage *storagePkg.Storage,
 	logger *zap.Logger,
-	hash hash.Hash,
+	h hash.Hash,
 ) *Sender {
 	return &Sender{
 		host:    host,
 		storage: storage,
 		logger:  logger,
-		hash:    hash,
+		hash:    h,
 	}
 }
 
@@ -117,6 +117,8 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 
 	resp, err := req.
 		SetBody(bodyBytes).
+		SetLogger(NewRestyLogger(s.logger)).
+		SetDebug(true).
 		Post(url)
 	if err != nil {
 		if errors.Is(err, syscall.ECONNREFUSED) {
