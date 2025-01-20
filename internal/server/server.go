@@ -91,21 +91,21 @@ func createMux(
 		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
-		WithHash(h, logger).
+		WithHashValidation(h, logger).
 		Build()
 
 	updateMetricHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
-		WithHash(h, logger).
+		WithHashValidation(h, logger).
 		Build()
 
 	updateMetricsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
-		WithHash(h, logger).
+		WithHashValidation(h, logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
@@ -113,7 +113,6 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
-		WithHash(h, logger).
 		Build()
 
 	getMetricValueHandler := middleware.
@@ -121,7 +120,6 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
-		WithHash(h, logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
@@ -129,13 +127,11 @@ func createMux(
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
-		WithHash(h, logger).
 		Build()
 
 	pingHandler := middleware.
 		NewBuilder(handlers.NewPing(pingables, logger)).
 		WithLogger(logger).
-		WithHash(h, logger).
 		Build()
 
 	router := chi.NewRouter()
