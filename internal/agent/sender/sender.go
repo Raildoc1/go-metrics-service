@@ -105,16 +105,9 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 
 	bodyBytes := body.Bytes()
 
-	anotherBody := bytes.NewBuffer(nil)
-	enc := json.NewEncoder(anotherBody)
-	err = enc.Encode(metrics)
-	if err != nil {
-		return fmt.Errorf("failed to encode request: %w", err)
-	}
-
 	if s.hash != nil {
 		s.hash.Reset()
-		_, err := s.hash.Write(anotherBody.Bytes())
+		_, err := s.hash.Write(bodyBytes)
 		if err != nil {
 			return fmt.Errorf("failed to write hash: %w", err)
 		}
