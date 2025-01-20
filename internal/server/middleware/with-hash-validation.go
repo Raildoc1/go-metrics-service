@@ -38,6 +38,11 @@ func withHashValidation(h http.Handler, hasher hash.Hash, logger *zap.Logger) ht
 		calculatedHashVal := hex.EncodeToString(hasher.Sum(nil))
 		receivedHashVal := r.Header.Get(protocol.HashHeader)
 		if calculatedHashVal != receivedHashVal {
+			requestLogger.Debug(
+				"hash mismatch",
+				zap.String("calculatedHash", calculatedHashVal),
+				zap.String("receivedHash", receivedHashVal),
+			)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
