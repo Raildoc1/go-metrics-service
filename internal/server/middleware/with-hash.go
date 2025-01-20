@@ -12,9 +12,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func withHash(h http.Handler, hash hash.Hash, logger *zap.Logger) http.Handler {
+func withHash(h http.Handler, hh hash.Hash, logger *zap.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if hash == nil {
+		if hh == nil {
 			h.ServeHTTP(w, r)
 			return
 		}
@@ -30,12 +30,12 @@ func withHash(h http.Handler, hash hash.Hash, logger *zap.Logger) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_, err = hash.Write(bodyBytes)
+		_, err = hh.Write(bodyBytes)
 		if err != nil {
 			requestLogger.Error("failed to write body", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		calculatedHashVal := hex.EncodeToString(hash.Sum(nil))
+		calculatedHashVal := hex.EncodeToString(hh.Sum(nil))
 		receivedHashVal := r.Header.Get(protocol.HashHeader)
 		if calculatedHashVal != receivedHashVal {
 			w.WriteHeader(http.StatusBadRequest)
