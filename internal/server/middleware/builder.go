@@ -32,8 +32,8 @@ func (b *Builder) WithResponseCompression(logger *zap.Logger) *Builder {
 	return b
 }
 
-func (b *Builder) WithHash(hash hash.Hash, logger *zap.Logger) *Builder {
-	b.httpHandler = withHash(b.httpHandler, hash, logger)
+func (b *Builder) WithHash(h hash.Hash, logger *zap.Logger) *Builder {
+	b.httpHandler = withHash(b.httpHandler, h, logger)
 	return b
 }
 
