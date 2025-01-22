@@ -26,6 +26,7 @@ const (
 const (
 	defaultFileStoragePath       = "./localstorage/data.gz"
 	defaultServerShutdownTimeout = 5
+	defaultAppShutdownTimeout    = 10
 	defaultStoreInterval         = 300
 	defaultRestore               = true
 )
@@ -36,6 +37,7 @@ type Config struct {
 	Database         database.Config
 	BackupMemStorage backupmemstorage.Config
 	Server           server.Config
+	ShutdownTimeout  time.Duration
 	Production       bool
 }
 
@@ -116,5 +118,6 @@ func Load() (Config, error) {
 			ServerAddress:   *serverAddress,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
+		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,
 	}, nil
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"go-metrics-service/cmd/server/config"
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
@@ -14,9 +16,10 @@ import (
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
 	"log"
-	"os"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 )
@@ -43,6 +46,34 @@ func main() {
 	}
 	logger.Sugar().Infoln("Configuration: ", string(jsCfg))
 
+	if err := run(&cfg, logger); err != nil {
+		logger.Error("Server shutdown with error", zap.Error(err))
+	} else {
+		logger.Info("Server shutdown gracefully")
+	}
+}
+
+func run(cfg *config.Config, logger *zap.Logger) error {
+	rootCtx, cancelCtx := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		syscall.SIGABRT,
+	)
+	defer cancelCtx()
+
+	g, ctx := errgroup.WithContext(rootCtx)
+
+	context.AfterFunc(ctx, func() {
+		ctx, cancelCtx := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancelCtx()
+
+		<-ctx.Done()
+		log.Fatal("failed to gracefully shutdown the server")
+	})
+
 	var pingables []handlers.Pingable
 	var rep server.Repository
 	var tm server.TransactionManager
@@ -52,19 +83,27 @@ func main() {
 		dbFactory := database.NewPgxDatabaseFactory(cfg.Database)
 		dbStorage, err := dbstorage.New(dbFactory, cfg.Database.RetryAttempts, logger)
 		if err != nil {
-			logger.Error("Failed to create database storage", zap.Error(err))
-			return
+			return fmt.Errorf("failed to create database storage: %w", err)
 		}
-		defer dbStorage.Close()
+		g.Go(func() error {
+			defer logger.Info("Closing DB Storage")
+			<-ctx.Done()
+			dbStorage.Close()
+			return nil
+		})
 		rep = dbrepository.New(dbStorage, logger)
 		tm = dbstorage.NewTransactionsManager(dbStorage, logger)
 	case cfg.BackupMemStorage.Backup.FilePath != "":
 		backupMemStorage, err := backupmemstorage.New(cfg.BackupMemStorage, logger)
 		if err != nil {
-			logger.Error("Failed to create memory storage", zap.Error(err))
-			return
+			return fmt.Errorf("failed to create memory storage: %w", err)
 		}
-		defer backupMemStorage.Stop()
+		g.Go(func() error {
+			defer logger.Info("Stopping mem-storage backup")
+			<-ctx.Done()
+			defer backupMemStorage.Stop()
+			return nil
+		})
 		rep = memrepository.New(backupMemStorage, logger)
 		tm = storages.NewDummyTransactionsManager()
 	default:
@@ -74,26 +113,26 @@ func main() {
 	}
 
 	srv := server.New(cfg.Server, rep, tm, pingables, logger)
-	defer srv.Close()
 
-	lifecycle(logger)
+	g.Go(func() error {
+		if err := srv.Run(); err != nil {
+			return fmt.Errorf("server error: %w", err)
+		}
+		return nil
+	})
 
-	logger.Info("Shutting down...")
-}
+	g.Go(func() error {
+		defer logger.Info("Shutting down server")
+		<-ctx.Done()
+		if err := srv.Shutdown(); err != nil {
+			return fmt.Errorf("failed to shutdown server: %w", err)
+		}
+		return nil
+	})
 
-func lifecycle(logger *zap.Logger) {
-	cancelChan := make(chan os.Signal, 1)
-	signal.Notify(
-		cancelChan,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		syscall.SIGABRT,
-	)
-
-	for range cancelChan {
-		logger.Info("Shutting down...")
-		return
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("goroutine error occured: %w", err)
 	}
+
+	return nil
 }

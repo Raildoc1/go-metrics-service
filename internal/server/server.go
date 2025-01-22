@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/controllers"
 	"go-metrics-service/internal/server/handlers"
@@ -49,23 +50,23 @@ func New(
 		httpServer: srv,
 	}
 
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("failed to start server", zap.Error(err))
-		}
-	}()
-
 	return res
 }
 
-func (s *Server) Close() {
+func (s *Server) Run() error {
+	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("server ListenAndServe failed: %w", err)
+	}
+	return nil
+}
+
+func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 	defer cancel()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
-		s.logger.Error("failed to gracefully shutdown", zap.Error(err))
-	} else {
-		s.logger.Info("server gracefully shutdown")
+		return fmt.Errorf("server shutdown failed: %w", err)
 	}
+	return nil
 }
 
 func createMux(
