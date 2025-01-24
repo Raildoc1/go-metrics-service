@@ -12,8 +12,8 @@ import (
 
 type HashWriter struct {
 	http.ResponseWriter
-	b bytes.Buffer
 	h hash.Hash
+	b bytes.Buffer
 }
 
 //nolint:wrapcheck // wrapping unnecessary

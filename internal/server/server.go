@@ -107,8 +107,8 @@ func createMux(
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		WithResponseHash(h, logger).
-		WithRequestDecompression(logger).
 		WithHashValidation(h, logger).
+		WithRequestDecompression(logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
