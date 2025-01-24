@@ -3,7 +3,6 @@ package sender
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -115,11 +114,6 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 		R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip")
-
-	if s.hash != nil {
-		h := hex.EncodeToString(s.hash.Sum(nil))
-		req = req.SetHeader(protocol.HashHeader, h)
-	}
 
 	bodyBytes := body.Bytes()
 

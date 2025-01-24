@@ -90,31 +90,31 @@ func createMux(
 	updateMetricPathParamsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
-		WithResponseHash(h, logger).
+		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
-		WithHashValidation(h, logger).
+		// WithHashValidation(h, logger).
 		Build()
 
 	updateMetricHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
 		WithLogger(logger).
-		WithResponseHash(h, logger).
+		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
-		WithHashValidation(h, logger).
+		// WithHashValidation(h, logger).
 		Build()
 
 	updateMetricsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
-		WithResponseHash(h, logger).
-		WithHashValidation(h, logger).
+		// WithResponseHash(h, logger).
+		// WithHashValidation(h, logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
 		NewBuilder(handlers.NewGetMetricValuePathParams(repository, repository, logger)).
 		WithLogger(logger).
-		WithResponseHash(h, logger).
+		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
@@ -122,7 +122,7 @@ func createMux(
 	getMetricValueHandler := middleware.
 		NewBuilder(handlers.NewGetMetricValue(repository, repository, logger)).
 		WithLogger(logger).
-		WithResponseHash(h, logger).
+		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
@@ -130,7 +130,7 @@ func createMux(
 	getAllMetricsHandler := middleware.
 		NewBuilder(handlers.NewGetAllMetrics(repository, logger)).
 		WithLogger(logger).
-		WithResponseHash(h, logger).
+		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
