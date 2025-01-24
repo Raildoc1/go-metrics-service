@@ -92,7 +92,7 @@ func createMux(
 		WithLogger(logger).
 		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
-		// WithHashValidation(h, logger).
+		WithHashValidation(h, logger).
 		Build()
 
 	updateMetricHandler := middleware.
@@ -100,14 +100,14 @@ func createMux(
 		WithLogger(logger).
 		// WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
-		// WithHashValidation(h, logger).
+		WithHashValidation(h, logger).
 		Build()
 
 	updateMetricsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		// WithResponseHash(h, logger).
-		// WithHashValidation(h, logger).
+		WithHashValidation(h, logger).
 		WithRequestDecompression(logger).
 		Build()
 
