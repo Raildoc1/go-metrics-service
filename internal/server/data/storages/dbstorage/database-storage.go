@@ -27,11 +27,6 @@ const (
 		);`
 )
 
-const (
-	logArgsName  = "args"
-	logQueryName = "query"
-)
-
 var errNoTransaction = errors.New("no transaction")
 
 type DBFactory interface {
