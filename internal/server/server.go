@@ -90,6 +90,7 @@ func createMux(
 	updateMetricPathParamsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
+		WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithHashValidation(h, logger).
 		Build()
@@ -97,6 +98,7 @@ func createMux(
 	updateMetricHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
 		WithLogger(logger).
+		WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithHashValidation(h, logger).
 		Build()
@@ -104,6 +106,7 @@ func createMux(
 	updateMetricsHandler := middleware.
 		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
+		WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithHashValidation(h, logger).
 		Build()
@@ -111,6 +114,7 @@ func createMux(
 	getMetricValuePathParamsHandler := middleware.
 		NewBuilder(handlers.NewGetMetricValuePathParams(repository, repository, logger)).
 		WithLogger(logger).
+		WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
@@ -118,6 +122,7 @@ func createMux(
 	getMetricValueHandler := middleware.
 		NewBuilder(handlers.NewGetMetricValue(repository, repository, logger)).
 		WithLogger(logger).
+		WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
@@ -125,6 +130,7 @@ func createMux(
 	getAllMetricsHandler := middleware.
 		NewBuilder(handlers.NewGetAllMetrics(repository, logger)).
 		WithLogger(logger).
+		WithResponseHash(h, logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()

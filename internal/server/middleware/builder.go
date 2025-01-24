@@ -37,6 +37,11 @@ func (b *Builder) WithHash(h hash.Hash, logger *zap.Logger) *Builder {
 	return b
 }
 
+func (b *Builder) WithResponseHash(h hash.Hash, logger *zap.Logger) *Builder {
+	b.httpHandler = withResponseHashing(b.httpHandler, h, logger)
+	return b
+}
+
 func (b *Builder) WithHashValidation(h hash.Hash, logger *zap.Logger) *Builder {
 	b.httpHandler = withHashValidation(b.httpHandler, h, logger)
 	return b
