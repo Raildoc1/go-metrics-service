@@ -83,6 +83,17 @@ func (s *Sender) Send() error {
 }
 
 func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
+
+	if s.hash != nil {
+		s.hash.Reset()
+		je := json.NewEncoder(s.hash)
+		je.SetIndent("", "")
+		err := je.Encode(metrics)
+		if err != nil {
+			return fmt.Errorf("failed to write to je: %w", err)
+		}
+	}
+
 	url := s.createURL(protocol.UpdateMetricsURL)
 	var body bytes.Buffer
 	err := compression.GzipCompress(
@@ -105,17 +116,12 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip")
 
-	bodyBytes := body.Bytes()
-
 	if s.hash != nil {
-		s.hash.Reset()
-		_, err := s.hash.Write(bodyBytes)
-		if err != nil {
-			return fmt.Errorf("failed to write hash: %w", err)
-		}
 		h := hex.EncodeToString(s.hash.Sum(nil))
 		req = req.SetHeader(protocol.HashHeader, h)
 	}
+
+	bodyBytes := body.Bytes()
 
 	resp, err := req.
 		SetBody(bodyBytes).
