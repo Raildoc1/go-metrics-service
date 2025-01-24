@@ -35,6 +35,7 @@ func withHashValidation(h http.Handler, hasher hash.Hash, logger *zap.Logger) ht
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		hasher.Reset()
 		_, err = hasher.Write(bodyBytes)
 		if err != nil {
 			requestLogger.Error("failed to write body", zap.Error(err))

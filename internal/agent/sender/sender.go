@@ -3,6 +3,7 @@ package sender
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -82,17 +83,6 @@ func (s *Sender) Send() error {
 }
 
 func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
-
-	if s.hash != nil {
-		s.hash.Reset()
-		je := json.NewEncoder(s.hash)
-		je.SetIndent("", "")
-		err := je.Encode(metrics)
-		if err != nil {
-			return fmt.Errorf("failed to write to je: %w", err)
-		}
-	}
-
 	url := s.createURL(protocol.UpdateMetricsURL)
 	var body bytes.Buffer
 	err := compression.GzipCompress(
@@ -115,10 +105,17 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip")
 
-	bodyBytes := body.Bytes()
+	if s.hash != nil {
+		s.hash.Reset()
+		_, err := s.hash.Write(body.Bytes())
+		if err != nil {
+			return fmt.Errorf("failed to hash: %w", err)
+		}
+		req = req.SetHeader(protocol.HashHeader, hex.EncodeToString(s.hash.Sum(nil)))
+	}
 
 	resp, err := req.
-		SetBody(bodyBytes).
+		SetBody(body.Bytes()).
 		SetLogger(NewRestyLogger(s.logger)).
 		SetDebug(true).
 		Post(url)
