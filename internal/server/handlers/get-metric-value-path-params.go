@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
@@ -40,7 +41,7 @@ func (h *GetMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *ht
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	result, err := h.getValue(metricType, key)
+	result, err := h.getValue(r.Context(), metricType, key)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrNotFound):
@@ -67,16 +68,16 @@ func (h *GetMetricValuePathParamsHandler) ServeHTTP(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *GetMetricValuePathParamsHandler) getValue(metricType, key string) (string, error) {
+func (h *GetMetricValuePathParamsHandler) getValue(ctx context.Context, metricType, key string) (string, error) {
 	switch metricType {
 	case protocol.Gauge:
-		value, err := h.gaugeRepository.GetFloat64(key)
+		value, err := h.gaugeRepository.GetGauge(ctx, key)
 		if err != nil {
 			return "", fmt.Errorf("get gauge: %w", err)
 		}
 		return strconv.FormatFloat(value, 'f', -1, 64), nil
 	case protocol.Counter:
-		value, err := h.counterRepository.GetInt64(key)
+		value, err := h.counterRepository.GetCounter(ctx, key)
 		if err != nil {
 			return "", fmt.Errorf("get counter: %w", err)
 		}

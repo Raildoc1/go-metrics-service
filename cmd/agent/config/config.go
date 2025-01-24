@@ -23,6 +23,8 @@ const (
 	defaultPollingIntervalSeconds = 2
 )
 
+var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
 type Config struct {
 	Agent      agent.Config
 	Production bool
@@ -45,6 +47,12 @@ func Load() (Config, error) {
 		pollingIntervalSecondsFlag,
 		defaultPollingIntervalSeconds,
 		"Metrics polling frequency in seconds",
+	)
+
+	sha256Key := flag.String(
+		commonConfig.SHA256KeyFlag,
+		"",
+		"SHA256 key",
 	)
 
 	flag.Parse()
@@ -77,6 +85,10 @@ func Load() (Config, error) {
 		*pollingIntervalSeconds = val
 	}
 
+	if valStr, ok := os.LookupEnv(commonConfig.SHA256KeyEnv); ok {
+		*sha256Key = valStr
+	}
+
 	if *sendingIntervalSeconds <= 0 {
 		return Config{}, errors.New("sending frequency must be greater than zero")
 	}
@@ -91,8 +103,10 @@ func Load() (Config, error) {
 	return Config{
 		Agent: agent.Config{
 			ServerAddress:   *serverAddress,
+			SHA256Key:       *sha256Key,
 			SendingInterval: sendingFreq,
 			PollingInterval: pollingFreq,
+			RetryAttempts:   defaultRetryAttempts,
 		},
 		Production: false,
 	}, nil

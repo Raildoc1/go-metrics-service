@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,7 +44,7 @@ func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	const errFill = "failed to fill request data"
-	if err := h.fill(&requestData); err != nil {
+	if err := h.fill(r.Context(), &requestData); err != nil {
 		switch {
 		case errors.Is(err, data.ErrNotFound):
 			requestLogger.Debug(errFill, zap.Error(err))
@@ -79,16 +80,16 @@ func (h *GetMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (h *GetMetricValueHandler) fill(requestData *protocol.Metrics) error {
+func (h *GetMetricValueHandler) fill(ctx context.Context, requestData *protocol.Metrics) error {
 	switch requestData.MType {
 	case protocol.Gauge:
-		value, err := h.gaugeRepository.GetFloat64(requestData.ID)
+		value, err := h.gaugeRepository.GetGauge(ctx, requestData.ID)
 		if err != nil {
 			return fmt.Errorf("get gauge: %w", err)
 		}
 		requestData.Value = &value
 	case protocol.Counter:
-		value, err := h.counterRepository.GetInt64(requestData.ID)
+		value, err := h.counterRepository.GetCounter(ctx, requestData.ID)
 		if err != nil {
 			return fmt.Errorf("get counter: %w", err)
 		}
