@@ -5,142 +5,132 @@ import (
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/data/repository"
-	"go-metrics-service/internal/server/data/storage"
+	"go-metrics-service/internal/server/controllers"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
-func Run(cfg Config, logger *zap.Logger) {
-	memStorage, err := createMemStorage(cfg, logger)
-	if err != nil {
-		logger.Error("failed to load from file", zap.Error(err))
-		return
+type Repository interface {
+	handlers.GaugeRepository
+	handlers.CounterRepository
+	handlers.AllMetricsRepository
+	logic.Repository
+}
+
+type TransactionManager interface {
+	controllers.TransactionManager
+}
+
+type Server struct {
+	logger     *zap.Logger
+	httpServer *http.Server
+	cfg        Config
+}
+
+func New(
+	cfg Config,
+	repository Repository,
+	transactionManager TransactionManager,
+	pingables []handlers.Pingable,
+	logger *zap.Logger,
+) *Server {
+	srv := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: createMux(repository, transactionManager, pingables, logger),
 	}
 
-	srv := &http.Server{Addr: cfg.ServerAddress}
-	srv.Handler = createMux(memStorage, logger)
+	res := &Server{
+		cfg:        cfg,
+		logger:     logger,
+		httpServer: srv,
+	}
 
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("failed to start server", zap.Error(err))
-		}
-	}()
+	return res
+}
 
-	lifecycle(cfg, logger, memStorage)
+func (s *Server) Run() error {
+	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("server ListenAndServe failed: %w", err)
+	}
+	return nil
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+func (s *Server) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Error("failed to gracefully shutdown", zap.Error(err))
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown failed: %w", err)
 	}
+	return nil
 }
 
-func createMemStorage(cfg Config, logger *zap.Logger) (*storage.MemStorage, error) {
-	if cfg.NeedRestore {
-		if _, err := os.Stat(cfg.FilePath); err == nil {
-			file, err := os.Open(cfg.FilePath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to open file: %w", err)
-			}
-			ms, err := storage.LoadFrom(file, logger)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load from file: %w", err)
-			}
-			logger.Info("data successfully restored", zap.String("path", cfg.FilePath))
-			return ms, nil
-		}
-	}
-	return storage.NewMemStorage(logger), nil
-}
-
-func lifecycle(cfg Config, logger *zap.Logger, memStorage *storage.MemStorage) {
-	storeTicker := time.NewTicker(cfg.StoreInterval)
-
-	cancelChan := make(chan os.Signal, 1)
-	signal.Notify(
-		cancelChan,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		syscall.SIGABRT,
-	)
-
-	for {
-		select {
-		case <-storeTicker.C:
-			trySaveStorage(memStorage, cfg.FilePath, logger)
-		case <-cancelChan:
-			trySaveStorage(memStorage, cfg.FilePath, logger)
-			return
-		}
-	}
-}
-
-func trySaveStorage(memStorage *storage.MemStorage, filePath string, logger *zap.Logger) {
-	if err := storage.SaveMemStorageToFile(memStorage, filePath, logger); err != nil {
-		logger.Error("failed to save to file", zap.Error(err))
-	} else {
-		logger.Info("successfully saved to file", zap.String("path", filePath))
-	}
-}
-
-func createMux(strg repository.Storage, logger *zap.Logger) *chi.Mux {
-	rep := repository.New(strg)
-
-	counterLogic := logic.NewCounter(rep, logger)
-	gaugeLogic := logic.New(rep, logger)
+func createMux(
+	repository Repository,
+	transactionManager TransactionManager,
+	pingables []handlers.Pingable,
+	logger *zap.Logger,
+) *chi.Mux {
+	service := logic.NewService(repository, logger)
+	controller := controllers.NewController(transactionManager, service, logger)
 
 	updateMetricPathParamsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetricPathParams(counterLogic, gaugeLogic, logger)).
+		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	updateMetricHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetric(counterLogic, gaugeLogic, logger)).
+		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
+		WithLogger(logger).
+		WithRequestDecompression(logger).
+		Build()
+
+	updateMetricsHandler := middleware.
+		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		Build()
 
 	getMetricValuePathParamsHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValuePathParams(rep, rep, logger)).
+		NewBuilder(handlers.NewGetMetricValuePathParams(repository, repository, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
 	getMetricValueHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValue(rep, rep, logger)).
+		NewBuilder(handlers.NewGetMetricValue(repository, repository, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
 	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(strg, logger)).
+		NewBuilder(handlers.NewGetAllMetrics(repository, logger)).
 		WithLogger(logger).
 		WithRequestDecompression(logger).
 		WithResponseCompression(logger).
 		Build()
 
+	pingHandler := middleware.
+		NewBuilder(handlers.NewPing(pingables, logger)).
+		WithLogger(logger).
+		Build()
+
 	router := chi.NewRouter()
 
 	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
+	router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
 	router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
 	router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
 	router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
 	router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
+	router.Get(protocol.PingURL, pingHandler.ServeHTTP)
 
 	return router
 }

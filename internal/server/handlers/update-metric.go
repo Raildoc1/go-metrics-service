@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,20 +13,17 @@ import (
 )
 
 type UpdateMetricValueHandler struct {
-	counterLogic CounterLogic
-	gaugeLogic   GaugeLogic
-	logger       *zap.Logger
+	metricController MetricController
+	logger           *zap.Logger
 }
 
 func NewUpdateMetric(
-	counterLogic CounterLogic,
-	gaugeLogic GaugeLogic,
+	metricUpdater MetricController,
 	logger *zap.Logger,
 ) http.Handler {
 	return &UpdateMetricValueHandler{
-		counterLogic: counterLogic,
-		gaugeLogic:   gaugeLogic,
-		logger:       logger,
+		metricController: metricUpdater,
+		logger:           logger,
 	}
 }
 
@@ -41,8 +39,9 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	h.logger.Debug("parsed request data", zap.Any("data", requestData))
 	const errUpdate = "update failed"
-	if err := h.update(&requestData); err != nil {
+	if err := h.update(r.Context(), &requestData); err != nil {
 		switch {
 		case errors.Is(err, ErrWrongValueType):
 			requestLogger.Debug(errUpdate, zap.Error(err))
@@ -64,20 +63,20 @@ func (h *UpdateMetricValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (h *UpdateMetricValueHandler) update(requestData *protocol.Metrics) error {
+func (h *UpdateMetricValueHandler) update(ctx context.Context, requestData *protocol.Metrics) error {
 	switch requestData.MType {
 	case protocol.Gauge:
 		if requestData.Value == nil {
 			return ErrWrongValueType
 		}
-		if err := h.gaugeLogic.Set(requestData.ID, *requestData.Value); err != nil {
+		if err := h.metricController.Update(ctx, *requestData); err != nil {
 			return fmt.Errorf("set gauge: %w", err)
 		}
 	case protocol.Counter:
 		if requestData.Delta == nil {
 			return ErrWrongValueType
 		}
-		if err := h.counterLogic.Change(requestData.ID, *requestData.Delta); err != nil {
+		if err := h.metricController.Update(ctx, *requestData); err != nil {
 			return fmt.Errorf("change counter: %w", err)
 		}
 	default:

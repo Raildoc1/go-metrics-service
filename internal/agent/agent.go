@@ -1,10 +1,13 @@
 package agent
 
 import (
+	"context"
+	"errors"
 	"go-metrics-service/internal/agent/config"
-	metricsCollector "go-metrics-service/internal/agent/metrics/collector"
-	metricsSender "go-metrics-service/internal/agent/metrics/sender"
-	metricsRequester "go-metrics-service/internal/agent/requester"
+	pollerPkg "go-metrics-service/internal/agent/poller"
+	senderPkg "go-metrics-service/internal/agent/sender"
+	storagePkg "go-metrics-service/internal/agent/storage"
+	"go-metrics-service/internal/common/timeutils"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,14 +17,14 @@ import (
 )
 
 func Run(cfg config.Config, logger *zap.Logger) {
-	collector := metricsCollector.New()
-	requester := metricsRequester.New(cfg.ServerAddress, logger)
-	sender := metricsSender.New(collector, requester, logger)
+	storage := storagePkg.New()
+	poller := pollerPkg.New(storage)
+	sender := senderPkg.New(cfg.ServerAddress, storage, logger)
 
-	lifecycle(cfg, collector, sender)
+	lifecycle(cfg, poller, sender, logger)
 }
 
-func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {
+func lifecycle(cfg config.Config, poller *pollerPkg.Poller, sender *senderPkg.Sender, logger *zap.Logger) {
 	cancelChan := make(chan os.Signal, 1)
 	signal.Notify(
 		cancelChan,
@@ -43,17 +46,22 @@ func lifecycle(cfg config.Config, collector *metricsCollector.MetricsCollector, 
 		case <-cancelChan:
 			return
 		case <-pollTicker.C:
-			collector.Poll()
+			poller.Poll()
 		case <-sendingTicker.C:
-			send(collector, sender)
+			_ = timeutils.Retry(
+				context.Background(),
+				cfg.RetryAttempts,
+				func(ctx context.Context) error {
+					return sender.Send()
+				},
+				func(err error) (needRetry bool) {
+					needRetry = errors.Is(err, senderPkg.ErrServerUnavailable)
+					if needRetry {
+						logger.Error("sending failed", zap.Error(err))
+					}
+					return needRetry
+				},
+			)
 		}
-	}
-}
-
-func send(collector *metricsCollector.MetricsCollector, sender *metricsSender.MetricsSender) {
-	sender.TrySendRuntimeMetrics()
-	sender.TrySendRandomValue()
-	if ok := sender.TrySendPollCount(); ok {
-		collector.FlushPollsCount()
 	}
 }

@@ -23,6 +23,8 @@ const (
 	defaultPollingIntervalSeconds = 2
 )
 
+var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
 type Config struct {
 	Agent      agent.Config
 	Production bool
@@ -93,6 +95,7 @@ func Load() (Config, error) {
 			ServerAddress:   *serverAddress,
 			SendingInterval: sendingFreq,
 			PollingInterval: pollingFreq,
+			RetryAttempts:   defaultRetryAttempts,
 		},
 		Production: false,
 	}, nil

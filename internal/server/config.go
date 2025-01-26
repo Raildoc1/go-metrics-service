@@ -1,6 +1,8 @@
 package server
 
-import "time"
+import (
+	"time"
+)
 
 type Config struct {
 	ServerAddress   string

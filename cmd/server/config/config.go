@@ -5,30 +5,40 @@ import (
 	"fmt"
 	common "go-metrics-service/cmd/common/config"
 	"go-metrics-service/internal/server"
+	"go-metrics-service/internal/server/data/storages/backupmemstorage"
+	"go-metrics-service/internal/server/database"
 	"os"
 	"strconv"
 	"time"
 )
 
 const (
-	fileStoragePathFlag = "f"
-	fileStoragePathEnv  = "FILE_STORAGE_PATH"
-	storeIntervalFlag   = "i"
-	storeIntervalEnv    = "STORE_INTERVAL"
-	restoreFlag         = "r"
-	restoreEnv          = "RESTORE"
+	fileStoragePathFlag    = "f"
+	fileStoragePathEnv     = "FILE_STORAGE_PATH"
+	storeIntervalFlag      = "i"
+	storeIntervalEnv       = "STORE_INTERVAL"
+	restoreFlag            = "r"
+	restoreEnv             = "RESTORE"
+	dbConnectionStringFlag = "d"
+	dbConnectionStringEnv  = "DATABASE_DSN"
 )
 
 const (
 	defaultFileStoragePath       = "./localstorage/data.gz"
 	defaultServerShutdownTimeout = 5
+	defaultAppShutdownTimeout    = 10
 	defaultStoreInterval         = 300
 	defaultRestore               = true
 )
 
+var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+
 type Config struct {
-	Server     server.Config
-	Production bool
+	Database         database.Config
+	BackupMemStorage backupmemstorage.Config
+	Server           server.Config
+	ShutdownTimeout  time.Duration
+	Production       bool
 }
 
 func Load() (Config, error) {
@@ -54,6 +64,12 @@ func Load() (Config, error) {
 		restoreFlag,
 		defaultRestore,
 		"Restore true/false",
+	)
+
+	dbConnectionString := flag.String(
+		dbConnectionStringFlag,
+		"",
+		"Database connection string",
 	)
 
 	flag.Parse()
@@ -82,13 +98,26 @@ func Load() (Config, error) {
 		*needRestore = val
 	}
 
+	if valStr, ok := os.LookupEnv(dbConnectionStringEnv); ok {
+		*dbConnectionString = valStr
+	}
+
 	return Config{
+		Database: database.Config{
+			ConnectionString: *dbConnectionString,
+			RetryAttempts:    defaultRetryAttempts,
+		},
+		BackupMemStorage: backupmemstorage.Config{
+			Backup: backupmemstorage.BackupConfig{
+				FilePath:      *fileStoragePath,
+				StoreInterval: time.Duration(*storeInterval) * time.Second,
+			},
+			NeedRestore: *needRestore,
+		},
 		Server: server.Config{
 			ServerAddress:   *serverAddress,
-			NeedRestore:     *needRestore,
-			FilePath:        *fileStoragePath,
-			StoreInterval:   time.Duration(*storeInterval) * time.Second,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
+		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,
 	}, nil
 }
