@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-metrics-service/internal/agent/gohelpers"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/common/protocol"
@@ -14,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"syscall"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
@@ -24,10 +26,13 @@ var (
 )
 
 type Sender struct {
-	logger  *zap.Logger
-	storage *storagePkg.Storage
-	hash    hash.Hash
-	host    string
+	hash       hash.Hash
+	logger     *zap.Logger
+	storage    *storagePkg.Storage
+	doneCh     chan struct{}
+	countersCh chan map[string]int64
+	gaugesCh   chan map[string]float64
+	host       string
 }
 
 func New(
@@ -37,22 +42,58 @@ func New(
 	h hash.Hash,
 ) *Sender {
 	return &Sender{
-		host:    host,
-		storage: storage,
-		logger:  logger,
-		hash:    h,
+		host:       host,
+		storage:    storage,
+		logger:     logger,
+		hash:       h,
+		doneCh:     make(chan struct{}),
+		countersCh: make(chan map[string]int64),
+		gaugesCh:   make(chan map[string]float64),
 	}
 }
 
-func (s *Sender) Send() error {
-	s.logger.Debug("Sending metrics")
-	metricsDiff := s.storage.GetUncommitedData()
-	metricsToUpdateCount := len(metricsDiff.CounterDeltas) + len(metricsDiff.GaugeValues)
-	if metricsToUpdateCount == 0 {
-		return nil
+func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
+	errChs := make([]chan error, 0)
+
+	errChs = append(
+		errChs,
+		gohelpers.StartTickerProcess(s.doneCh, s.Schedule, interval),
+		gohelpers.StartProcess[map[string]float64](
+			s.doneCh,
+			s.sendGaugesUpdate,
+			func() {},
+			s.gaugesCh,
+		),
+	)
+
+	for range workersCount {
+		errChs = append(errChs, gohelpers.StartProcess[map[string]int64](
+			s.doneCh,
+			s.sendCountersUpdate,
+			func() {},
+			s.countersCh,
+		))
 	}
-	metricsToSend := make([]protocol.Metrics, 0, metricsToUpdateCount)
-	for k, v := range metricsDiff.CounterDeltas {
+
+	return gohelpers.AggregateErrors(errChs...)
+}
+
+func (s *Sender) Stop() {
+	close(s.doneCh)
+}
+
+func (s *Sender) Schedule() error {
+	g := s.storage.ConsumeUncommitedGauges()
+	s.gaugesCh <- g
+	c := s.storage.ConsumeUncommitedCounters()
+	s.countersCh <- c
+	return nil
+}
+
+func (s *Sender) sendCountersUpdate(counterDeltas map[string]int64) error {
+	metricsToSend := make([]protocol.Metrics, 0, len(counterDeltas))
+
+	for k, v := range counterDeltas {
 		val := v
 		metricsToSend = append(
 			metricsToSend,
@@ -63,7 +104,14 @@ func (s *Sender) Send() error {
 			},
 		)
 	}
-	for k, v := range metricsDiff.GaugeValues {
+
+	return s.sendUpdates(metricsToSend)
+}
+
+func (s *Sender) sendGaugesUpdate(gaugeValues map[string]float64) error {
+	metricsToSend := make([]protocol.Metrics, 0, len(gaugeValues))
+
+	for k, v := range gaugeValues {
 		val := v
 		metricsToSend = append(
 			metricsToSend,
@@ -74,12 +122,8 @@ func (s *Sender) Send() error {
 			},
 		)
 	}
-	err := s.sendUpdates(metricsToSend)
-	if err != nil {
-		return fmt.Errorf("sending updates failed: %w", err)
-	}
-	s.storage.Commit()
-	return nil
+
+	return s.sendUpdates(metricsToSend)
 }
 
 func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {

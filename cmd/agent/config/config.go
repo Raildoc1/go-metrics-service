@@ -16,11 +16,14 @@ const (
 	sendingIntervalSecondsEnv  = "REPORT_INTERVAL"
 	pollingIntervalSecondsFlag = "p"
 	pollingIntervalSecondsEnv  = "POLL_INTERVAL"
+	rateLimitFlag              = "l"
+	rateLimitEnv               = "RATE_LIMIT"
 )
 
 const (
 	defaultSendingIntervalSeconds = 10
 	defaultPollingIntervalSeconds = 2
+	defaultRateLimit              = 2
 )
 
 var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
@@ -47,6 +50,12 @@ func Load() (Config, error) {
 		pollingIntervalSecondsFlag,
 		defaultPollingIntervalSeconds,
 		"Metrics polling frequency in seconds",
+	)
+
+	rateLimit := flag.Int(
+		rateLimitFlag,
+		defaultRateLimit,
+		"Outgoing requests rate limit",
 	)
 
 	sha256Key := flag.String(
@@ -85,6 +94,14 @@ func Load() (Config, error) {
 		*pollingIntervalSeconds = val
 	}
 
+	if valStr, ok := os.LookupEnv(rateLimitEnv); ok {
+		val, err := strconv.Atoi(valStr)
+		if err != nil {
+			return Config{}, fmt.Errorf("%w: '%s' env variable parsing failed", err, rateLimitEnv)
+		}
+		*rateLimit = val
+	}
+
 	if valStr, ok := os.LookupEnv(commonConfig.SHA256KeyEnv); ok {
 		*sha256Key = valStr
 	}
@@ -107,6 +124,7 @@ func Load() (Config, error) {
 			SendingInterval: sendingFreq,
 			PollingInterval: pollingFreq,
 			RetryAttempts:   defaultRetryAttempts,
+			RateLimit:       *rateLimit,
 		},
 		Production: false,
 	}, nil

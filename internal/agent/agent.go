@@ -4,67 +4,70 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"errors"
+	"fmt"
 	"go-metrics-service/internal/agent/config"
 	pollerPkg "go-metrics-service/internal/agent/poller"
 	senderPkg "go-metrics-service/internal/agent/sender"
 	storagePkg "go-metrics-service/internal/agent/storage"
-	"go-metrics-service/internal/common/timeutils"
-	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 )
 
-func Run(cfg config.Config, logger *zap.Logger) {
+func Run(cfg *config.Config, logger *zap.Logger) error {
 	storage := storagePkg.New()
-	poller := pollerPkg.New(storage)
+	poller := pollerPkg.New(storage, logger)
 	hash := hmac.New(sha256.New, []byte(cfg.SHA256Key))
 	sender := senderPkg.New(cfg.ServerAddress, storage, logger, hash)
 
-	lifecycle(cfg, poller, sender, logger)
-}
-
-func lifecycle(cfg config.Config, poller *pollerPkg.Poller, sender *senderPkg.Sender, logger *zap.Logger) {
-	cancelChan := make(chan os.Signal, 1)
-	signal.Notify(
-		cancelChan,
+	rootCtx, cancelCtx := signal.NotifyContext(
+		context.Background(),
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 		syscall.SIGABRT,
 	)
+	defer cancelCtx()
 
-	pollTicker := time.NewTicker(cfg.PollingInterval)
-	defer pollTicker.Stop()
+	g, ctx := errgroup.WithContext(rootCtx)
 
-	sendingTicker := time.NewTicker(cfg.SendingInterval)
-	defer sendingTicker.Stop()
-
-	for {
-		select {
-		case <-cancelChan:
-			return
-		case <-pollTicker.C:
-			poller.Poll()
-		case <-sendingTicker.C:
-			_ = timeutils.Retry(
-				context.Background(),
-				cfg.RetryAttempts,
-				func(ctx context.Context) error {
-					return sender.Send()
-				},
-				func(err error) (needRetry bool) {
-					needRetry = errors.Is(err, senderPkg.ErrServerUnavailable)
-					if needRetry {
-						logger.Error("sending failed", zap.Error(err))
-					}
-					return needRetry
-				},
-			)
+	g.Go(func() error {
+		errCh := poller.Start(cfg.PollingInterval)
+		for err := range errCh {
+			logger.Error("poller error", zap.Error(err))
 		}
+		return nil
+	})
+
+	g.Go(func() error {
+		defer logger.Info("Poller stopped")
+		<-ctx.Done()
+		poller.Stop()
+		return nil
+	})
+
+	g.Go(func() error {
+		errCh := sender.Start(cfg.SendingInterval, cfg.RateLimit)
+		for err := range errCh {
+			logger.Error("sender error", zap.Error(err))
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		defer logger.Info("Sender stopped")
+		<-ctx.Done()
+		sender.Stop()
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("goroutine error occured: %w", err)
 	}
+
+	return nil
 }
