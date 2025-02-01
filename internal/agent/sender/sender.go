@@ -3,6 +3,7 @@ package sender
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/common/timeutils"
 	"hash"
 	"io"
 	"net/http"
@@ -30,29 +32,32 @@ type HashFactory interface {
 }
 
 type Sender struct {
-	logger      *zap.Logger
-	storage     *storagePkg.Storage
-	hashFactory HashFactory
-	doneCh      chan struct{}
-	countersCh  chan map[string]int64
-	gaugesCh    chan map[string]float64
-	host        string
+	logger        *zap.Logger
+	storage       *storagePkg.Storage
+	hashFactory   HashFactory
+	doneCh        chan struct{}
+	countersCh    chan map[string]int64
+	gaugesCh      chan map[string]float64
+	host          string
+	attemptsDelay []time.Duration
 }
 
 func New(
 	host string,
+	attemptsDelay []time.Duration,
 	storage *storagePkg.Storage,
 	logger *zap.Logger,
 	hashFactory HashFactory,
 ) *Sender {
 	return &Sender{
-		host:        host,
-		storage:     storage,
-		logger:      logger,
-		hashFactory: hashFactory,
-		doneCh:      make(chan struct{}),
-		countersCh:  make(chan map[string]int64),
-		gaugesCh:    make(chan map[string]float64),
+		host:          host,
+		storage:       storage,
+		logger:        logger,
+		hashFactory:   hashFactory,
+		doneCh:        make(chan struct{}),
+		countersCh:    make(chan map[string]int64),
+		gaugesCh:      make(chan map[string]float64),
+		attemptsDelay: attemptsDelay,
 	}
 }
 
@@ -109,7 +114,15 @@ func (s *Sender) sendCountersUpdate(counterDeltas map[string]int64) error {
 		)
 	}
 
-	return s.sendUpdates(metricsToSend)
+	return timeutils.Retry(
+		context.Background(),
+		s.attemptsDelay,
+		func(ctx context.Context) error {
+			return s.sendUpdates(metricsToSend)
+		},
+		func(err error) bool {
+			return true
+		})
 }
 
 func (s *Sender) sendGaugesUpdate(gaugeValues map[string]float64) error {

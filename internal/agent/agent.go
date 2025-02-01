@@ -26,7 +26,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
 	}
 
-	sender := senderPkg.New(cfg.ServerAddress, storage, logger, hashFactory)
+	sender := senderPkg.New(cfg.ServerAddress, cfg.RetryAttempts, storage, logger, hashFactory)
 
 	rootCtx, cancelCtx := signal.NotifyContext(
 		context.Background(),
