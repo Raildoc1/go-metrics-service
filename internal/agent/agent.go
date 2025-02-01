@@ -2,13 +2,13 @@ package agent
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"fmt"
 	"go-metrics-service/internal/agent/config"
 	pollerPkg "go-metrics-service/internal/agent/poller"
 	senderPkg "go-metrics-service/internal/agent/sender"
 	storagePkg "go-metrics-service/internal/agent/storage"
+	"go-metrics-service/internal/common/hashing"
+	"go-metrics-service/internal/server/middleware"
 	"os/signal"
 	"syscall"
 
@@ -20,8 +20,13 @@ import (
 func Run(cfg *config.Config, logger *zap.Logger) error {
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage, logger)
-	hash := hmac.New(sha256.New, []byte(cfg.SHA256Key))
-	sender := senderPkg.New(cfg.ServerAddress, storage, logger, hash)
+
+	var hashFactory middleware.HashFactory = nil
+	if cfg.SHA256Key != "" {
+		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
+	}
+
+	sender := senderPkg.New(cfg.ServerAddress, storage, logger, hashFactory)
 
 	rootCtx, cancelCtx := signal.NotifyContext(
 		context.Background(),

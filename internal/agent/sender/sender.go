@@ -25,30 +25,34 @@ var (
 	ErrServerUnavailable = errors.New("server unavailable")
 )
 
+type HashFactory interface {
+	Create() hash.Hash
+}
+
 type Sender struct {
-	hash       hash.Hash
-	logger     *zap.Logger
-	storage    *storagePkg.Storage
-	doneCh     chan struct{}
-	countersCh chan map[string]int64
-	gaugesCh   chan map[string]float64
-	host       string
+	logger      *zap.Logger
+	storage     *storagePkg.Storage
+	hashFactory HashFactory
+	doneCh      chan struct{}
+	countersCh  chan map[string]int64
+	gaugesCh    chan map[string]float64
+	host        string
 }
 
 func New(
 	host string,
 	storage *storagePkg.Storage,
 	logger *zap.Logger,
-	h hash.Hash,
+	hashFactory HashFactory,
 ) *Sender {
 	return &Sender{
-		host:       host,
-		storage:    storage,
-		logger:     logger,
-		hash:       h,
-		doneCh:     make(chan struct{}),
-		countersCh: make(chan map[string]int64),
-		gaugesCh:   make(chan map[string]float64),
+		host:        host,
+		storage:     storage,
+		logger:      logger,
+		hashFactory: hashFactory,
+		doneCh:      make(chan struct{}),
+		countersCh:  make(chan map[string]int64),
+		gaugesCh:    make(chan map[string]float64),
 	}
 }
 
@@ -149,13 +153,13 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip")
 
-	if s.hash != nil {
-		s.hash.Reset()
-		_, err := s.hash.Write(body.Bytes())
+	if s.hashFactory != nil {
+		h := s.hashFactory.Create()
+		_, err := h.Write(body.Bytes())
 		if err != nil {
 			return fmt.Errorf("failed to hash: %w", err)
 		}
-		req = req.SetHeader(protocol.HashHeader, hex.EncodeToString(s.hash.Sum(nil)))
+		req = req.SetHeader(protocol.HashHeader, hex.EncodeToString(h.Sum(nil)))
 	}
 
 	resp, err := req.
