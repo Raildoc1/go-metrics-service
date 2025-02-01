@@ -34,11 +34,11 @@ const (
 var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
 
 type Config struct {
+	SHA256Key        string
 	Database         database.Config
 	BackupMemStorage backupmemstorage.Config
 	Server           server.Config
 	ShutdownTimeout  time.Duration
-	SHA256Key        string
 	Production       bool
 }
 
