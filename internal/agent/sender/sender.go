@@ -114,15 +114,7 @@ func (s *Sender) sendCountersUpdate(counterDeltas map[string]int64) error {
 		)
 	}
 
-	return timeutils.Retry(
-		context.Background(),
-		s.attemptsDelay,
-		func(ctx context.Context) error {
-			return s.sendUpdates(metricsToSend)
-		},
-		func(err error) bool {
-			return true
-		})
+	return s.sendUpdatesWithRetry(metricsToSend)
 }
 
 func (s *Sender) sendGaugesUpdate(gaugeValues map[string]float64) error {
@@ -140,7 +132,19 @@ func (s *Sender) sendGaugesUpdate(gaugeValues map[string]float64) error {
 		)
 	}
 
-	return s.sendUpdates(metricsToSend)
+	return s.sendUpdatesWithRetry(metricsToSend)
+}
+
+func (s *Sender) sendUpdatesWithRetry(metrics []protocol.Metrics) error {
+	return timeutils.Retry( //nolint:wrapcheck // wrapping unnecessary
+		context.Background(),
+		s.attemptsDelay,
+		func(ctx context.Context) error {
+			return s.sendUpdates(metrics)
+		},
+		func(err error) bool {
+			return true
+		})
 }
 
 func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
