@@ -137,18 +137,25 @@ func (s *Storage) ConsumeUncommitedCounters() map[string]int64 {
 	return deltas
 }
 
-func (s *Storage) ConsumeUncommitedGauges() map[string]float64 {
+func (s *Storage) HandleUncommitedGauges(f func(map[string]float64) error) error {
 	s.gMutex.Lock()
 	defer s.gMutex.Unlock()
 
 	values := make(map[string]float64)
-
 	for k, v := range s.gauges {
 		if value, ok := v.GetUncommitedValue(); ok {
 			values[k] = value
 		}
+	}
+
+	err := f(values)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range s.gauges {
 		v.commit()
 	}
 
-	return values
+	return nil
 }

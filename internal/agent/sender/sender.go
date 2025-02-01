@@ -37,7 +37,7 @@ type Sender struct {
 	hashFactory   HashFactory
 	doneCh        chan struct{}
 	countersCh    chan map[string]int64
-	gaugesCh      chan map[string]float64
+	gaugesCh      chan struct{}
 	host          string
 	attemptsDelay []time.Duration
 }
@@ -56,7 +56,7 @@ func New(
 		hashFactory:   hashFactory,
 		doneCh:        make(chan struct{}),
 		countersCh:    make(chan map[string]int64),
-		gaugesCh:      make(chan map[string]float64),
+		gaugesCh:      make(chan struct{}),
 		attemptsDelay: attemptsDelay,
 	}
 }
@@ -67,7 +67,7 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 	errChs = append(
 		errChs,
 		gohelpers.StartTickerProcess(s.doneCh, s.Schedule, interval),
-		gohelpers.StartProcess[map[string]float64](
+		gohelpers.StartProcess[struct{}](
 			s.doneCh,
 			s.sendGaugesUpdate,
 			func() {},
@@ -92,8 +92,7 @@ func (s *Sender) Stop() {
 }
 
 func (s *Sender) Schedule() error {
-	g := s.storage.ConsumeUncommitedGauges()
-	s.gaugesCh <- g
+	s.gaugesCh <- struct{}{}
 	c := s.storage.ConsumeUncommitedCounters()
 	s.countersCh <- c
 	return nil
@@ -117,22 +116,25 @@ func (s *Sender) sendCountersUpdate(counterDeltas map[string]int64) error {
 	return s.sendUpdatesWithRetry(metricsToSend)
 }
 
-func (s *Sender) sendGaugesUpdate(gaugeValues map[string]float64) error {
-	metricsToSend := make([]protocol.Metrics, 0, len(gaugeValues))
+func (s *Sender) sendGaugesUpdate(_ struct{}) error {
+	return s.storage.HandleUncommitedGauges( //nolint:wrapcheck // wrapping unnecessary
+		func(uncommitedValues map[string]float64) error {
+			metricsToSend := make([]protocol.Metrics, 0, len(uncommitedValues))
 
-	for k, v := range gaugeValues {
-		val := v
-		metricsToSend = append(
-			metricsToSend,
-			protocol.Metrics{
-				ID:    k,
-				MType: protocol.Gauge,
-				Value: &val,
-			},
-		)
-	}
+			for k, v := range uncommitedValues {
+				val := v
+				metricsToSend = append(
+					metricsToSend,
+					protocol.Metrics{
+						ID:    k,
+						MType: protocol.Gauge,
+						Value: &val,
+					},
+				)
+			}
 
-	return s.sendUpdatesWithRetry(metricsToSend)
+			return s.sendUpdates(metricsToSend)
+		})
 }
 
 func (s *Sender) sendUpdatesWithRetry(metrics []protocol.Metrics) error {
@@ -143,6 +145,7 @@ func (s *Sender) sendUpdatesWithRetry(metrics []protocol.Metrics) error {
 			return s.sendUpdates(metrics)
 		},
 		func(err error) bool {
+			s.logger.Error("sending updates failed", zap.Error(err))
 			return true
 		})
 }
