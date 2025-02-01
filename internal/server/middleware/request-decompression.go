@@ -10,6 +10,16 @@ import (
 	"go.uber.org/zap"
 )
 
+type RequestDecompressor struct {
+	logger *zap.Logger
+}
+
+func NewRequestDecompressor(logger *zap.Logger) *RequestDecompressor {
+	return &RequestDecompressor{
+		logger: logger,
+	}
+}
+
 type compressReader struct {
 	originalReader      io.ReadCloser
 	decompressingReader *gzip.Reader
@@ -40,12 +50,12 @@ func (r *compressReader) Close() error {
 	return r.decompressingReader.Close()
 }
 
-func withRequestDecompression(h http.Handler, logger *zap.Logger) http.Handler {
+func (rd *RequestDecompressor) CreateHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestLogger := handlers.NewRequestLogger(logger, r)
+		requestLogger := handlers.NewRequestLogger(rd.logger, r)
 
 		if r.Header.Get("Content-Encoding") != "gzip" {
-			h.ServeHTTP(w, r)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -59,6 +69,6 @@ func withRequestDecompression(h http.Handler, logger *zap.Logger) http.Handler {
 
 		r.Body = decompressingReader
 
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }

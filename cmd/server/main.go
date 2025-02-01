@@ -15,6 +15,8 @@ import (
 	"go-metrics-service/internal/server/data/storages/memstorage"
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
+	"go-metrics-service/internal/server/hashing"
+	"go-metrics-service/internal/server/middleware"
 	"log"
 	"os/signal"
 	"syscall"
@@ -112,7 +114,12 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 		tm = storages.NewDummyTransactionsManager()
 	}
 
-	srv := server.New(cfg.Server, rep, tm, pingables, logger)
+	var hashFactory middleware.HashFactory = nil
+	if cfg.SHA256Key != "" {
+		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
+	}
+
+	srv := server.New(cfg.Server, rep, tm, hashFactory, pingables, logger)
 
 	g.Go(func() error {
 		if err := srv.Run(); err != nil {

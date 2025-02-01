@@ -38,6 +38,7 @@ type Config struct {
 	BackupMemStorage backupmemstorage.Config
 	Server           server.Config
 	ShutdownTimeout  time.Duration
+	SHA256Key        string
 	Production       bool
 }
 
@@ -126,9 +127,9 @@ func Load() (Config, error) {
 		},
 		Server: server.Config{
 			ServerAddress:   *serverAddress,
-			SHA256Key:       *sha256Key,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
+		SHA256Key:       *sha256Key,
 		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,
 	}, nil
 }
