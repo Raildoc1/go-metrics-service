@@ -31,5 +31,8 @@ func main() {
 	}
 	logger.Sugar().Infoln("Configuration: ", string(jsCfg))
 
-	agent.Run(cfg.Agent, logger)
+	err = agent.Run(&cfg.Agent, logger)
+	if err != nil {
+		logger.Error("Agent error", zap.Error(err))
+	}
 }

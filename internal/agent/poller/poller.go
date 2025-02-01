@@ -1,9 +1,17 @@
 package poller
 
 import (
+	"fmt"
+	"go-metrics-service/internal/agent/gohelpers"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"math/rand"
 	"runtime"
+	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 const (
@@ -12,15 +20,47 @@ const (
 
 type Poller struct {
 	storage *storagePkg.Storage
+	logger  *zap.Logger
+	doneCh  chan struct{}
 }
 
-func New(storage *storagePkg.Storage) *Poller {
+func New(storage *storagePkg.Storage, logger *zap.Logger) *Poller {
 	return &Poller{
 		storage: storage,
+		logger:  logger,
+		doneCh:  make(chan struct{}),
 	}
 }
 
-func (p *Poller) Poll() {
+func (p *Poller) Start(interval time.Duration) chan error {
+	errCh1 := gohelpers.StartTickerProcess(p.doneCh, p.CollectRuntimeMetrics, interval)
+	errCh2 := gohelpers.StartTickerProcess(p.doneCh, p.CollectGopsutilMemMetrics, interval)
+	errCh3 := gohelpers.StartTickerProcess(p.doneCh, p.CollectGopsutilCPUMetrics, interval)
+
+	return gohelpers.AggregateErrors(errCh1, errCh2, errCh3)
+}
+
+func (p *Poller) Stop() {
+	close(p.doneCh)
+}
+
+func (p *Poller) PollProcess(f func(), interval time.Duration, errCh chan error) {
+	defer close(errCh)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			f()
+		case <-p.doneCh:
+			return
+		}
+	}
+}
+
+func (p *Poller) CollectRuntimeMetrics() error {
 	runtimeMetrics := runtime.MemStats{}
 	runtime.ReadMemStats(&runtimeMetrics)
 
@@ -61,4 +101,30 @@ func (p *Poller) Poll() {
 		"TotalAlloc":    float64(runtimeMetrics.TotalAlloc),
 		"RandomValue":   rand.Float64(),
 	})
+	return nil
+}
+
+func (p *Poller) CollectGopsutilCPUMetrics() error {
+	cpuInfos, err := cpu.Percent(0, true)
+	if err != nil {
+		return fmt.Errorf("failed to get cpu info: %w", err)
+	}
+	cpuValues := make(map[string]float64)
+	for i, cpuInfo := range cpuInfos {
+		cpuValues[fmt.Sprintf("CpuUtilization%v", i)] = cpuInfo
+	}
+	p.storage.SetGauges(cpuValues)
+	return nil
+}
+
+func (p *Poller) CollectGopsutilMemMetrics() error {
+	memInfo, err := mem.VirtualMemory()
+	if err != nil {
+		return fmt.Errorf("failed to get mem info: %w", err)
+	}
+	p.storage.SetGauges(map[string]float64{
+		"FreeMemory":  float64(memInfo.Free),
+		"TotalMemory": float64(memInfo.Total),
+	})
+	return nil
 }

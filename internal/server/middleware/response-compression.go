@@ -10,6 +10,16 @@ import (
 	"go.uber.org/zap"
 )
 
+type ResponseCompressor struct {
+	logger *zap.Logger
+}
+
+func NewResponseCompressor(logger *zap.Logger) *ResponseCompressor {
+	return &ResponseCompressor{
+		logger: logger,
+	}
+}
+
 type gzipWriter struct {
 	http.ResponseWriter
 	Writer           io.Writer
@@ -22,13 +32,13 @@ func (w *gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func withResponseCompression(h http.Handler, logger *zap.Logger) http.Handler {
+func (rc *ResponseCompressor) CreateHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestLogger := handlers.NewRequestLogger(logger, r)
+		requestLogger := handlers.NewRequestLogger(rc.logger, r)
 
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			requestLogger.Debug("compression missed")
-			h.ServeHTTP(w, r)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -48,7 +58,7 @@ func withResponseCompression(h http.Handler, logger *zap.Logger) http.Handler {
 
 		w.Header().Set("Content-Encoding", "gzip")
 		wrappedWriter := gzipWriter{ResponseWriter: w, Writer: gz}
-		h.ServeHTTP(&wrappedWriter, r)
+		next.ServeHTTP(&wrappedWriter, r)
 
 		requestLogger.Debug("request compressed",
 			zap.Int("Uncompressed size", wrappedWriter.uncompressedSize),

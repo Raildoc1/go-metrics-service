@@ -12,6 +12,10 @@ const (
 )
 
 const (
+	HashHeader = "HashSHA256"
+)
+
+const (
 	UpdateMetricURL           = "/update/"
 	UpdateMetricsURL          = "/updates/"
 	GetMetricURL              = "/value/"
