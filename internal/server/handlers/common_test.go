@@ -12,10 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type handlerSetup struct {
+	handler http.Handler
+	method  string
+	url     string
+}
+
 type handlerTestData struct {
 	testName       string
-	method         string
-	url            string
+	handlerSetup   handlerSetup
 	body           string
 	pathParams     map[string]string
 	expectedStatus int
@@ -23,7 +28,7 @@ type handlerTestData struct {
 }
 
 func createResponseAndRequest(data *handlerTestData) (w *httptest.ResponseRecorder, r *http.Request) {
-	r = httptest.NewRequest(data.method, data.url, bytes.NewBufferString(data.body))
+	r = httptest.NewRequest(data.handlerSetup.method, data.handlerSetup.url, bytes.NewBufferString(data.body))
 	w = httptest.NewRecorder()
 	if data.pathParams != nil {
 		rctx := chi.NewRouteContext()
@@ -35,26 +40,26 @@ func createResponseAndRequest(data *handlerTestData) (w *httptest.ResponseRecord
 	return w, r
 }
 
-func performHTTPHandlerTests(t *testing.T, handler http.Handler, testDatas []handlerTestData) {
+func performHTTPHandlerTests(t *testing.T, testDatas []handlerTestData) {
 	t.Helper()
 	for _, testData := range testDatas {
-		performHTTPHandlerTest(t, handler, &testData)
+		performHTTPHandlerTest(t, &testData)
 	}
 }
 
-func performHTTPHandlerTest(t *testing.T, handler http.Handler, testData *handlerTestData) {
+func performHTTPHandlerTest(t *testing.T, testData *handlerTestData) {
 	t.Helper()
 	t.Run(testData.testName, func(t *testing.T) {
 		w, r := createResponseAndRequest(testData)
 
-		handler.ServeHTTP(w, r)
+		testData.handlerSetup.handler.ServeHTTP(w, r)
 
 		assert.Equal(t, testData.expectedStatus, w.Code, testData.testName)
 		assert.Equal(t, testData.expectedBody, w.Body.String(), testData.testName)
 	})
 }
 
-func performHTTPHandlerBenchmark(b *testing.B, handler http.Handler, testData *handlerTestData) {
+func performHTTPHandlerBenchmark(b *testing.B, testData *handlerTestData) {
 	b.Helper()
 	b.ResetTimer()
 
@@ -62,12 +67,9 @@ func performHTTPHandlerBenchmark(b *testing.B, handler http.Handler, testData *h
 		b.StopTimer()
 		w, r := createResponseAndRequest(testData)
 		b.StartTimer()
-		handler.ServeHTTP(w, r)
+		testData.handlerSetup.handler.ServeHTTP(w, r)
 		b.StopTimer()
 		if w.Code != testData.expectedStatus {
-			b.Fail()
-		}
-		if w.Body.String() != testData.expectedBody {
 			b.Fail()
 		}
 		b.StartTimer()

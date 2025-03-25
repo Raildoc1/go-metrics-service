@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/data"
 	"net/http"
 	"strconv"
 
@@ -43,6 +44,10 @@ func (h *UpdateMetricPathParamsHandler) ServeHTTP(w http.ResponseWriter, r *http
 		switch {
 		case errors.Is(err, ErrParsing):
 			requestLogger.Debug("parsing failed", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		case errors.Is(err, data.ErrWrongType):
+			requestLogger.Debug("wrong type", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		case errors.Is(err, ErrNonExistentType):

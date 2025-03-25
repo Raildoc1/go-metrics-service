@@ -11,6 +11,7 @@ import (
 )
 
 type ServerContext struct {
+	Repository logic.Repository
 	Controller *controllers.Controller
 	Logger     *zap.Logger
 }
@@ -23,6 +24,7 @@ func NewServerContext() *ServerContext {
 	service := logic.NewService(memRepository, logger)
 	controller := controllers.NewController(transactionManager, service, logger)
 	return &ServerContext{
+		Repository: memRepository,
 		Controller: controller,
 		Logger:     logger,
 	}

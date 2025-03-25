@@ -9,13 +9,16 @@ import (
 
 func TestUpdateMetricPathParams(t *testing.T) {
 	serverContext := testutils.NewServerContext()
-	handler := NewUpdateMetricPathParams(serverContext.Controller, serverContext.Logger)
+	updateMetricHandlerSetup := handlerSetup{
+		handler: NewUpdateMetricPathParams(serverContext.Controller, serverContext.Logger),
+		method:  http.MethodPost,
+		url:     protocol.UpdateMetricPathParamsURL,
+	}
 
 	tests := []handlerTestData{
 		{
-			testName: "positive counter delta",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "positive counter delta",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -24,9 +27,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			testName: "negative counter delta",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "negative counter delta",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -35,9 +37,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			testName: "zero counter delta",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "zero counter delta",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -46,9 +47,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			testName: "positive gauge value",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "positive gauge value",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Gauge,
 				protocol.KeyParam:   "test_gauge",
@@ -57,9 +57,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			testName: "negative gauge value",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "negative gauge value",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Gauge,
 				protocol.KeyParam:   "test_gauge",
@@ -68,9 +67,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			testName: "update existing",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "update existing",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -79,9 +77,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			testName: "wrong type counter",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "wrong type counter",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Gauge,
 				protocol.KeyParam:   "test_counter",
@@ -90,9 +87,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			testName: "wrong type gauge",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "wrong type gauge",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_gauge",
@@ -101,9 +97,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			testName: "wrong value type",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "wrong value type",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -112,9 +107,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			testName: "non-existent type",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "non-existent type",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  "non_existent_type",
 				protocol.KeyParam:   "test_counter",
@@ -123,9 +117,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			testName: "too long number",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "too long number",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -134,9 +127,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			testName: "non-numeric value counter",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "non-numeric value counter",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Counter,
 				protocol.KeyParam:   "test_counter",
@@ -145,9 +137,8 @@ func TestUpdateMetricPathParams(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			testName: "non-numeric value gauge",
-			method:   http.MethodPost,
-			url:      protocol.UpdateMetricPathParamsURL,
+			testName:     "non-numeric value gauge",
+			handlerSetup: updateMetricHandlerSetup,
 			pathParams: map[string]string{
 				protocol.TypeParam:  protocol.Gauge,
 				protocol.KeyParam:   "test_gauge",
@@ -157,19 +148,27 @@ func TestUpdateMetricPathParams(t *testing.T) {
 		},
 	}
 
-	performHTTPHandlerTests(t, handler, tests)
+	performHTTPHandlerTests(t, tests)
 }
 
 func BenchmarkUpdateMetricPathParams(b *testing.B) {
 	serverContext := testutils.NewServerContext()
-	handler := NewUpdateMetric(serverContext.Controller, serverContext.Logger)
+	updateMetricHandlerSetup := handlerSetup{
+		handler: NewUpdateMetricPathParams(serverContext.Controller, serverContext.Logger),
+		method:  http.MethodPost,
+		url:     protocol.UpdateMetricPathParamsURL,
+	}
 
 	test := handlerTestData{
-		testName:       "positive counter delta",
-		method:         http.MethodPost,
-		url:            "/update/counter/test_counter/1",
+		testName:     "positive counter delta",
+		handlerSetup: updateMetricHandlerSetup,
+		pathParams: map[string]string{
+			protocol.TypeParam:  protocol.Counter,
+			protocol.KeyParam:   "test_counter",
+			protocol.ValueParam: "1",
+		},
 		expectedStatus: http.StatusOK,
 	}
 
-	performHTTPHandlerBenchmark(b, handler, &test)
+	performHTTPHandlerBenchmark(b, &test)
 }

@@ -10,15 +10,15 @@ import (
 
 func TCreateCounterDeltaJSON(t *testing.T, id string, delta int64) string {
 	t.Helper()
-	obj := createCounter(id, delta)
+	obj := CreateCounter(id, delta)
 	res, err := json.Marshal(obj)
 	require.NoError(t, err)
 	return string(res)
 }
 
-func TCreateGaugeJSON(t *testing.T, id string, value float64) string {
+func TCreateGaugeDiffJSON(t *testing.T, id string, value float64) string {
 	t.Helper()
-	obj := createGauge(id, value)
+	obj := CreateGauge(id, value)
 	res, err := json.Marshal(obj)
 	require.NoError(t, err)
 	return string(res)
@@ -26,7 +26,7 @@ func TCreateGaugeJSON(t *testing.T, id string, value float64) string {
 
 func BCreateCounterDeltaJSON(b *testing.B, id string, delta int64) string {
 	b.Helper()
-	obj := createCounter(id, delta)
+	obj := CreateCounter(id, delta)
 	res, err := json.Marshal(obj)
 	if err != nil {
 		b.Fatal(err)
@@ -34,7 +34,7 @@ func BCreateCounterDeltaJSON(b *testing.B, id string, delta int64) string {
 	return string(res)
 }
 
-func createCounter(id string, delta int64) protocol.Metrics {
+func CreateCounter(id string, delta int64) protocol.Metrics {
 	deltaCopy := delta
 	return protocol.Metrics{
 		ID:    id,
@@ -43,11 +43,25 @@ func createCounter(id string, delta int64) protocol.Metrics {
 	}
 }
 
-func createGauge(id string, value float64) protocol.Metrics {
+func CreateGauge(id string, value float64) protocol.Metrics {
 	valueCopy := value
 	return protocol.Metrics{
 		ID:    id,
 		MType: protocol.Gauge,
 		Value: &valueCopy,
 	}
+}
+
+func TCreateMetricsJSON(t *testing.T, values []protocol.Metrics) string {
+	t.Helper()
+	res, err := json.Marshal(values)
+	require.NoError(t, err)
+	return string(res)
+}
+
+func BCreateMetricsJSON(b *testing.B, values []protocol.Metrics) string {
+	b.Helper()
+	res, err := json.Marshal(values)
+	require.NoError(b, err)
+	return string(res)
 }
