@@ -10,6 +10,7 @@ import (
 	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
 	"net/http"
+	"net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -110,22 +111,32 @@ func createMux(
 
 	router := chi.NewRouter()
 
-	router.Use(
+	router.Get("/debug/pprof/", pprof.Index)
+	router.Get("/debug/pprof/cmdline", pprof.Cmdline)
+	router.Get("/debug/pprof/profile", pprof.Profile)
+	router.Get("/debug/pprof/symbol", pprof.Symbol)
+	router.Get("/debug/pprof/trace", pprof.Trace)
+	router.Get("/debug/pprof/{profile}", func(w http.ResponseWriter, r *http.Request) {
+		profile := chi.URLParam(r, "profile")
+		pprof.Handler(profile).ServeHTTP(w, r)
+	})
+	router.With(
 		loggerMiddleware.CreateHandler,
 		requestHashMiddleware.CreateHandler,
 		responseHashMiddleware.CreateHandler,
 		requestDecompressMiddleware.CreateHandler,
-	)
-	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
-	router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
-	router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
-	router.Get(protocol.PingURL, pingHandler.ServeHTTP)
-	router.With(responseCompressMiddleware.CreateHandler).
-		Route("/", func(router chi.Router) {
-			router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
-			router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
-			router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
-		})
+	).Route("/", func(router chi.Router) {
+		router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
+		router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
+		router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
+		router.Get(protocol.PingURL, pingHandler.ServeHTTP)
+		router.With(responseCompressMiddleware.CreateHandler).
+			Route("/", func(router chi.Router) {
+				router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
+				router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
+				router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
+			})
+	})
 
 	return router
 }
