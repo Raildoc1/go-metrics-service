@@ -52,14 +52,14 @@ func TestUpdateMetrics(t *testing.T) {
 
 func BenchmarkUpdateMetrics(b *testing.B) {
 	serverContext := testutils.NewServerContext()
-	updateMetricHandlerSetup := handlerSetup{
-		handler: NewUpdateMetric(serverContext.Controller, serverContext.Logger),
+	updateMetricsHandlerSetup := handlerSetup{
+		handler: NewUpdateMetrics(serverContext.Controller, serverContext.Logger),
 		method:  http.MethodPost,
-		url:     protocol.UpdateMetricURL,
+		url:     protocol.UpdateMetricsURL,
 	}
 
 	test := handlerTestData{
-		handlerSetup: updateMetricHandlerSetup,
+		handlerSetup: updateMetricsHandlerSetup,
 		body: testutils.BCreateMetricsJSON(b, []protocol.Metrics{
 			testutils.CreateCounter("test_counter", 1),
 			testutils.CreateGauge("test_gauge", 1.4),
