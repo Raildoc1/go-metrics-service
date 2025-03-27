@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"go-metrics-service/internal/common/compression"
 	"io"
+	"sync"
 
 	"go.uber.org/zap"
 )
 
 type MemStorage struct {
-	data   rawData
-	logger *zap.Logger
+	data    rawData
+	rwMutex *sync.RWMutex
+	logger  *zap.Logger
 }
 
 type rawData struct {
@@ -24,7 +26,8 @@ func New(logger *zap.Logger) *MemStorage {
 		data: rawData{
 			Values: make(map[string]any),
 		},
-		logger: logger,
+		rwMutex: &sync.RWMutex{},
+		logger:  logger,
 	}
 }
 
@@ -45,11 +48,14 @@ func LoadFrom(reader io.Reader, logger *zap.Logger) (*MemStorage, error) {
 		data: rawData{
 			Values: readData.Values,
 		},
-		logger: logger,
+		rwMutex: &sync.RWMutex{},
+		logger:  logger,
 	}, nil
 }
 
 func (s *MemStorage) SaveTo(writer io.Writer) error {
+	s.rwMutex.RLock()
+	defer s.rwMutex.RUnlock()
 	err := compression.GzipCompress(
 		rawData{
 			Values: s.data.Values,
@@ -68,12 +74,22 @@ func (s *MemStorage) SaveTo(writer io.Writer) error {
 }
 
 func (s *MemStorage) Get(key string) (val any, ok bool) {
+	s.rwMutex.RLock()
+	defer s.rwMutex.RUnlock()
 	val, ok = s.data.Values[key]
 	return
 }
 func (s *MemStorage) GetAll() map[string]any {
-	return s.data.Values
+	s.rwMutex.RLock()
+	defer s.rwMutex.RUnlock()
+	dataCopy := make(map[string]any)
+	for k, v := range s.data.Values {
+		dataCopy[k] = v
+	}
+	return dataCopy
 }
 func (s *MemStorage) Set(key string, value any) {
+	s.rwMutex.Lock()
+	defer s.rwMutex.Unlock()
 	s.data.Values[key] = value
 }

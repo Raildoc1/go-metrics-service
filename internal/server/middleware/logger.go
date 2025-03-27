@@ -8,16 +8,26 @@ import (
 	"go.uber.org/zap"
 )
 
-func withLogger(inner http.Handler, logger *zap.Logger) http.Handler {
+type Logger struct {
+	logger *zap.Logger
+}
+
+func NewLogger(logger *zap.Logger) *Logger {
+	return &Logger{
+		logger: logger,
+	}
+}
+
+func (l *Logger) CreateHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestLogger := handlers.NewRequestLogger(logger, r)
+		requestLogger := handlers.NewRequestLogger(l.logger, r)
 		start := time.Now()
 		lrw := loggingResponseWriter{
 			inner:  w,
 			status: http.StatusOK,
 			size:   0,
 		}
-		inner.ServeHTTP(&lrw, r)
+		next.ServeHTTP(&lrw, r)
 		requestLogger.Info(
 			"Request handled",
 			zap.Duration("duration", time.Since(start)),

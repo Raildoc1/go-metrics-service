@@ -32,16 +32,21 @@ type Server struct {
 	cfg        Config
 }
 
+type middlewareFactory interface {
+	CreateHandler(next http.Handler) http.Handler
+}
+
 func New(
 	cfg Config,
 	repository Repository,
 	transactionManager TransactionManager,
+	hashFactory middleware.HashFactory,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 ) *Server {
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
-		Handler: createMux(repository, transactionManager, pingables, logger),
+		Handler: createMux(hashFactory, repository, transactionManager, pingables, logger),
 	}
 
 	res := &Server{
@@ -70,6 +75,7 @@ func (s *Server) Shutdown() error {
 }
 
 func createMux(
+	hashFactory middleware.HashFactory,
 	repository Repository,
 	transactionManager TransactionManager,
 	pingables []handlers.Pingable,
@@ -78,59 +84,48 @@ func createMux(
 	service := logic.NewService(repository, logger)
 	controller := controllers.NewController(transactionManager, service, logger)
 
-	updateMetricPathParamsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetricPathParams(controller, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		Build()
+	loggerMiddleware := middleware.NewLogger(logger)
 
-	updateMetricHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetric(controller, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		Build()
+	var responseHashMiddleware middlewareFactory
+	var requestHashMiddleware middlewareFactory
 
-	updateMetricsHandler := middleware.
-		NewBuilder(handlers.NewUpdateMetrics(controller, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		Build()
+	if hashFactory != nil {
+		responseHashMiddleware = middleware.NewResponseHash(logger, hashFactory)
+		requestHashMiddleware = middleware.NewRequestHash(logger, hashFactory)
+	} else {
+		responseHashMiddleware = middleware.NewNop()
+		requestHashMiddleware = middleware.NewNop()
+	}
 
-	getMetricValuePathParamsHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValuePathParams(repository, repository, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		WithResponseCompression(logger).
-		Build()
+	requestDecompressMiddleware := middleware.NewRequestDecompressor(logger)
+	responseCompressMiddleware := middleware.NewResponseCompressor(logger)
 
-	getMetricValueHandler := middleware.
-		NewBuilder(handlers.NewGetMetricValue(repository, repository, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		WithResponseCompression(logger).
-		Build()
-
-	getAllMetricsHandler := middleware.
-		NewBuilder(handlers.NewGetAllMetrics(repository, logger)).
-		WithLogger(logger).
-		WithRequestDecompression(logger).
-		WithResponseCompression(logger).
-		Build()
-
-	pingHandler := middleware.
-		NewBuilder(handlers.NewPing(pingables, logger)).
-		WithLogger(logger).
-		Build()
+	updateMetricPathParamsHandler := handlers.NewUpdateMetricPathParams(controller, logger)
+	updateMetricHandler := handlers.NewUpdateMetric(controller, logger)
+	updateMetricsHandler := handlers.NewUpdateMetrics(controller, logger)
+	getMetricValuePathParamsHandler := handlers.NewGetMetricValuePathParams(repository, repository, logger)
+	getMetricValueHandler := handlers.NewGetMetricValue(repository, repository, logger)
+	getAllMetricsHandler := handlers.NewGetAllMetrics(repository, logger)
+	pingHandler := handlers.NewPing(pingables, logger)
 
 	router := chi.NewRouter()
 
+	router.Use(
+		loggerMiddleware.CreateHandler,
+		requestHashMiddleware.CreateHandler,
+		responseHashMiddleware.CreateHandler,
+		requestDecompressMiddleware.CreateHandler,
+	)
 	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
 	router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
 	router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
-	router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
-	router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
-	router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
 	router.Get(protocol.PingURL, pingHandler.ServeHTTP)
+	router.With(responseCompressMiddleware.CreateHandler).
+		Route("/", func(router chi.Router) {
+			router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
+			router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
+			router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
+		})
 
 	return router
 }

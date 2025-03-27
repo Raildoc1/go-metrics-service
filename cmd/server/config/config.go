@@ -34,6 +34,7 @@ const (
 var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
 
 type Config struct {
+	SHA256Key        string
 	Database         database.Config
 	BackupMemStorage backupmemstorage.Config
 	Server           server.Config
@@ -72,6 +73,12 @@ func Load() (Config, error) {
 		"Database connection string",
 	)
 
+	sha256Key := flag.String(
+		common.SHA256KeyFlag,
+		"",
+		"SHA256 key",
+	)
+
 	flag.Parse()
 
 	if valStr, ok := os.LookupEnv(common.ServerAddressEnv); ok {
@@ -102,6 +109,10 @@ func Load() (Config, error) {
 		*dbConnectionString = valStr
 	}
 
+	if valStr, ok := os.LookupEnv(common.SHA256KeyEnv); ok {
+		*sha256Key = valStr
+	}
+
 	return Config{
 		Database: database.Config{
 			ConnectionString: *dbConnectionString,
@@ -118,6 +129,7 @@ func Load() (Config, error) {
 			ServerAddress:   *serverAddress,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
+		SHA256Key:       *sha256Key,
 		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,
 	}, nil
 }
