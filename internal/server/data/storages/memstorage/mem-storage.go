@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"fmt"
-	"go-metrics-service/internal/common/compression"
+	"go-metrics-service/pkg/compression"
 	"io"
 	"sync"
 

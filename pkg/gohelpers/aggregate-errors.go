@@ -2,6 +2,7 @@ package gohelpers
 
 import "sync"
 
+// AggregateErrors passes errors from many error channels to one
 func AggregateErrors(errChs ...chan error) chan error {
 	resultCh := make(chan error)
 
