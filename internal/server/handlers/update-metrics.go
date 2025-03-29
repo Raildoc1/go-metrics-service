@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/data"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -36,8 +38,23 @@ func (h *UpdateMetricsValueHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.metricController.UpdateMany(r.Context(), requestData); err != nil {
-		h.logger.Error("failed to update metrics", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		switch {
+		case errors.Is(err, ErrParsing):
+			requestLogger.Debug("parsing failed", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		case errors.Is(err, data.ErrWrongType):
+			requestLogger.Debug("wrong type", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		case errors.Is(err, ErrNonExistentType):
+			requestLogger.Debug("non-existent type", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		default:
+			requestLogger.Error("unexpected error", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }

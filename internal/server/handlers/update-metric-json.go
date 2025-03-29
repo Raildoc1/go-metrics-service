@@ -20,7 +20,7 @@ type UpdateMetricValueHandler struct {
 func NewUpdateMetric(
 	metricUpdater MetricController,
 	logger *zap.Logger,
-) http.Handler {
+) *UpdateMetricValueHandler {
 	return &UpdateMetricValueHandler{
 		metricController: metricUpdater,
 		logger:           logger,

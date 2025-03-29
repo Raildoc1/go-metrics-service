@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/internal/server/handlers"
 	"hash"
@@ -76,34 +77,44 @@ func (rh *RequestHash) CreateHandler(next http.Handler) http.Handler {
 			return
 		}
 		requestLogger := handlers.NewRequestLogger(rh.logger, r)
-		bodyBytes, err := io.ReadAll(r.Body)
+		bodyBytes, err := readBodyAndRewind(&r.Body)
 		if err != nil {
-			requestLogger.Error("failed to read body", zap.Error(err))
+			requestLogger.Error("failed to read request body", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		err = r.Body.Close()
+		calculatedHashVal, err := calculateHash(bodyBytes, rh.hashFactory)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		h := rh.hashFactory.Create()
-		_, err = h.Write(bodyBytes)
-		if err != nil {
-			requestLogger.Error("failed to write body", zap.Error(err))
+			requestLogger.Error("failed to calculate hash", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		calculatedHashVal := hex.EncodeToString(h.Sum(nil))
 		if calculatedHashVal != receivedHashVal {
-			requestLogger.Debug(
-				"hash mismatch",
-				zap.String("calculatedHash", calculatedHashVal),
-				zap.String("receivedHash", receivedHashVal),
-			)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		next.ServeHTTP(w, r)
 	})
+}
+
+func calculateHash(bodyBytes []byte, hashFactory HashFactory) (string, error) {
+	h := hashFactory.Create()
+	_, err := h.Write(bodyBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to write body: %w", err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func readBodyAndRewind(readCloser *io.ReadCloser) ([]byte, error) {
+	result := bytes.Buffer{}
+	_, err := io.Copy(&result, *readCloser)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read body: %w", err)
+	}
+	err = (*readCloser).Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close body: %w", err)
+	}
+	*readCloser = io.NopCloser(bytes.NewBuffer(result.Bytes()))
+	return result.Bytes(), nil
 }
