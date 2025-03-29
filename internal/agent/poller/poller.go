@@ -3,7 +3,7 @@ package poller
 import (
 	"fmt"
 	storagePkg "go-metrics-service/internal/agent/storage"
-	gohelpers2 "go-metrics-service/pkg/gohelpers"
+	"go-metrics-service/pkg/gohelpers"
 	"math/rand"
 	"runtime"
 	"time"
@@ -33,11 +33,11 @@ func New(storage *storagePkg.Storage, logger *zap.Logger) *Poller {
 }
 
 func (p *Poller) Start(interval time.Duration) chan error {
-	errCh1 := gohelpers2.StartTickerProcess(p.doneCh, p.CollectRuntimeMetrics, interval)
-	errCh2 := gohelpers2.StartTickerProcess(p.doneCh, p.CollectGopsutilMemMetrics, interval)
-	errCh3 := gohelpers2.StartTickerProcess(p.doneCh, p.CollectGopsutilCPUMetrics, interval)
+	errCh1 := gohelpers.StartTickerProcess(p.doneCh, p.CollectRuntimeMetrics, interval)
+	errCh2 := gohelpers.StartTickerProcess(p.doneCh, p.CollectGopsutilMemMetrics, interval)
+	errCh3 := gohelpers.StartTickerProcess(p.doneCh, p.CollectGopsutilCPUMetrics, interval)
 
-	return gohelpers2.AggregateErrors(errCh1, errCh2, errCh3)
+	return gohelpers.AggregateErrors(errCh1, errCh2, errCh3)
 }
 
 func (p *Poller) Stop() {
