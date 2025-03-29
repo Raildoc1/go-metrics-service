@@ -10,6 +10,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func BenchmarkMemStorage_Set(b *testing.B) {
+	memStorage := New(zap.NewNop())
+	b.ResetTimer()
+	for i := range b.N {
+		memStorage.Set("test_key", i)
+	}
+}
+
+func BenchmarkMemStorage_Get(b *testing.B) {
+	memStorage := New(zap.NewNop())
+	memStorage.Set("test_key", "test_value")
+	b.ResetTimer()
+	for range b.N {
+		_, _ = memStorage.Get("test_key")
+	}
+}
+
+func BenchmarkMemStorage_GetAll(b *testing.B) {
+	memStorage := New(zap.NewNop())
+	for i := range 10000 {
+		memStorage.Set(fmt.Sprintf("test_key_%v", i), i)
+	}
+	b.ResetTimer()
+	for range b.N {
+		_ = memStorage.GetAll()
+	}
+}
+
 func TestGetExistingValue(t *testing.T) {
 	memStorage := New(zap.NewNop())
 	tests := []struct {

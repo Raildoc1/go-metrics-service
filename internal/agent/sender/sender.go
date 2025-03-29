@@ -8,11 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-metrics-service/internal/agent/gohelpers"
 	storagePkg "go-metrics-service/internal/agent/storage"
-	"go-metrics-service/internal/common/compression"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/common/timeutils"
+	"go-metrics-service/pkg/compression"
+	gohelpers2 "go-metrics-service/pkg/gohelpers"
+	"go-metrics-service/pkg/timeutils"
 	"hash"
 	"io"
 	"net/http"
@@ -66,8 +66,8 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 
 	errChs = append(
 		errChs,
-		gohelpers.StartTickerProcess(s.doneCh, s.Schedule, interval),
-		gohelpers.StartProcess[struct{}](
+		gohelpers2.StartTickerProcess(s.doneCh, s.Schedule, interval),
+		gohelpers2.StartProcess[struct{}](
 			s.doneCh,
 			s.sendGaugesUpdate,
 			func() {},
@@ -76,7 +76,7 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 	)
 
 	for range workersCount {
-		errChs = append(errChs, gohelpers.StartProcess[map[string]int64](
+		errChs = append(errChs, gohelpers2.StartProcess[map[string]int64](
 			s.doneCh,
 			s.sendCountersUpdate,
 			func() {},
@@ -84,7 +84,7 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 		))
 	}
 
-	return gohelpers.AggregateErrors(errChs...)
+	return gohelpers2.AggregateErrors(errChs...)
 }
 
 func (s *Sender) Stop() {

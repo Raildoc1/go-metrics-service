@@ -1,3 +1,4 @@
+// Package compression contains gzip compression helpers
 package compression
 
 import (
@@ -16,6 +17,9 @@ type Decoder interface {
 	Decode(v any) error
 }
 
+// GzipCompress encodes item with encoder created with newEncoder function
+// then compresses with gzip of provided level
+// then writes to writer
 func GzipCompress(
 	item any,
 	newEncoder func(writer io.Writer) Encoder,
@@ -47,6 +51,8 @@ func GzipCompress(
 	return nil
 }
 
+// GzipDecompress decompress input from reader
+// then decodes it to item
 func GzipDecompress(
 	item any,
 	newDecoder func(reader io.Reader) Decoder,

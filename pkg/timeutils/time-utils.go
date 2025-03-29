@@ -1,3 +1,4 @@
+// Package timeutils contains time helpers
 package timeutils
 
 import (
@@ -6,6 +7,14 @@ import (
 	"time"
 )
 
+// Retry executes function until one of the following statements are true:
+//  1. function returned no error
+//  2. onFailed return false
+//  3. retries max count reached
+//
+// retries max count equals to attemptsDelays length
+//
+// can be interrupted with context
 func Retry(
 	ctx context.Context,
 	attemptDelays []time.Duration,
@@ -32,6 +41,7 @@ func Retry(
 	return err
 }
 
+// SleepCtx performs sleep that can be interrupted with context
 func SleepCtx(ctx context.Context, d time.Duration) error {
 	select {
 	case <-ctx.Done():
