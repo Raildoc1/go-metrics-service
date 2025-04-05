@@ -175,7 +175,7 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 
 	if s.hashFactory != nil {
 		h := s.hashFactory.Create()
-		_, err := h.Write(body.Bytes())
+		_, err = h.Write(body.Bytes())
 		if err != nil {
 			return fmt.Errorf("failed to hash: %w", err)
 		}

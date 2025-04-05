@@ -34,12 +34,7 @@ func main() {
 	}
 	logger := logging.CreateZapLogger(!cfg.Production).
 		With(zap.String("source", "server"))
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
-		if err != nil {
-			log.Println(err)
-		}
-	}(logger)
+	defer syncZapLogger(logger)
 
 	jsCfg, err := json.MarshalIndent(cfg, "", "    ") //nolint:musttag // marshalling for debug
 	if err != nil {
@@ -69,10 +64,10 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 	g, ctx := errgroup.WithContext(rootCtx)
 
 	context.AfterFunc(ctx, func() {
-		ctx, cancelCtx := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		timeoutCtx, cancelCtx := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 		defer cancelCtx()
 
-		<-ctx.Done()
+		<-timeoutCtx.Done()
 		log.Fatal("failed to gracefully shutdown the server")
 	})
 
@@ -142,4 +137,11 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 	}
 
 	return nil
+}
+
+func syncZapLogger(logger *zap.Logger) {
+	err := logger.Sync()
+	if err != nil {
+		log.Println(err)
+	}
 }

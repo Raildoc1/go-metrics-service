@@ -17,12 +17,7 @@ func main() {
 	}
 	logger := logging.CreateZapLogger(!cfg.Production).
 		With(zap.String("source", "agent"))
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
-		if err != nil {
-			log.Println(err)
-		}
-	}(logger)
+	defer syncZapLogger(logger)
 
 	jsCfg, err := json.MarshalIndent(cfg, "", "    ") //nolint:musttag // marshalling for debug
 	if err != nil {
@@ -34,5 +29,12 @@ func main() {
 	err = agent.Run(&cfg.Agent, logger)
 	if err != nil {
 		logger.Error("Agent error", zap.Error(err))
+	}
+}
+
+func syncZapLogger(logger *zap.Logger) {
+	err := logger.Sync()
+	if err != nil {
+		log.Println(err)
 	}
 }

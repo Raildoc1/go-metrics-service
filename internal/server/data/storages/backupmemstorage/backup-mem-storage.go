@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/server/data/storages/memstorage"
+	"go-metrics-service/pkg/closehelpers"
 	"os"
 	"path/filepath"
 	"time"
@@ -42,12 +43,7 @@ func New(cfg Config, logger *zap.Logger) (*BackupMemStorage, error) {
 			return nil, fmt.Errorf("failed to open file: %w", err)
 		}
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			logger.Error("failed to close file", zap.Error(err))
-		}
-	}(file)
+	defer closehelpers.CloseWithErrorLogging(file, "file", logger)
 	ms, err := memstorage.LoadFrom(file, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load from file: %w", err)

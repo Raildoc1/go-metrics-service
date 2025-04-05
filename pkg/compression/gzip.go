@@ -4,6 +4,7 @@ package compression
 import (
 	"compress/gzip"
 	"fmt"
+	"go-metrics-service/pkg/closehelpers"
 	"io"
 
 	"go.uber.org/zap"
@@ -31,12 +32,7 @@ func GzipCompress(
 	if err != nil {
 		return fmt.Errorf("failed to create gzip writer: %w", err)
 	}
-	defer func(gzipWriter *gzip.Writer) {
-		err := gzipWriter.Close()
-		if err != nil {
-			logger.Error("failed to close gzip writer", zap.Error(err))
-		}
-	}(gzipWriter)
+	defer closehelpers.CloseWithErrorLogging(gzipWriter, "gzip writer", logger)
 
 	encoder := newEncoder(gzipWriter)
 	err = encoder.Encode(item)
@@ -63,12 +59,7 @@ func GzipDecompress(
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader: %w", err)
 	}
-	defer func(gzipReader *gzip.Reader) {
-		err := gzipReader.Close()
-		if err != nil {
-			logger.Error("failed to close gzip reader", zap.Error(err))
-		}
-	}(gzipReader)
+	defer closehelpers.CloseWithErrorLogging(gzipReader, "gzip reader", logger)
 
 	decoder := newDecoder(gzipReader)
 	err = decoder.Decode(item)
