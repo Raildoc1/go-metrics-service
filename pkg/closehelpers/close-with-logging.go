@@ -1,3 +1,4 @@
+// Package closehelpers contains extensions for io.Closer
 package closehelpers
 
 import (

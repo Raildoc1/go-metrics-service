@@ -1,3 +1,4 @@
+// Package backupmemstorage contains memstorage wrapper that can save its state to file and then restore it
 package backupmemstorage
 
 import (

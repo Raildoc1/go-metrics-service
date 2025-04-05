@@ -1,3 +1,4 @@
+// Package dbrepository contains implementation of repository for database storage
 package dbrepository
 
 import (

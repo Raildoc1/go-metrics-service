@@ -1,3 +1,4 @@
+// Package protocol contains types and constants used by both agent and server
 package protocol
 
 const (

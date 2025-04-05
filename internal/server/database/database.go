@@ -1,3 +1,4 @@
+// Package database contains postgresql db factory
 package database
 
 import (

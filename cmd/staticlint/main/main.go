@@ -6,6 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"honnef.co/go/tools/quickfix"
+	"honnef.co/go/tools/stylecheck"
+
+	"honnef.co/go/tools/simple"
+
+	"golang.org/x/tools/go/analysis/passes/loopclosure"
+	"golang.org/x/tools/go/analysis/passes/nilness"
 	"golang.org/x/tools/go/analysis/passes/shadow"
 	"golang.org/x/tools/go/analysis/passes/structtag"
 
@@ -39,10 +46,12 @@ func main() {
 	res := []*analysis.Analyzer{
 		printf.Analyzer,
 		shadow.Analyzer,
+		loopclosure.Analyzer,
+		nilness.Analyzer,
 		structtag.Analyzer,
 	}
 
-	// res = appendStaticcheckAnalyzers(res, cfg.Staticcheck)
+	res = appendStaticcheckAnalyzers(res, cfg.Staticcheck)
 
 	multichecker.Main(res...)
 }
@@ -56,6 +65,15 @@ func appendStaticcheckAnalyzers(analyzers []*analysis.Analyzer, analyzerNames []
 		if checks[v.Analyzer.Name] {
 			analyzers = append(analyzers, v.Analyzer)
 		}
+	}
+	for _, v := range simple.Analyzers {
+		analyzers = append(analyzers, v.Analyzer)
+	}
+	for _, v := range stylecheck.Analyzers {
+		analyzers = append(analyzers, v.Analyzer)
+	}
+	for _, v := range quickfix.Analyzers {
+		analyzers = append(analyzers, v.Analyzer)
 	}
 	return analyzers
 }
