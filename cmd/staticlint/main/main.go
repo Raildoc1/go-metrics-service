@@ -1,6 +1,8 @@
 package main
 
 import (
+	"staticlint/osexit"
+
 	"github.com/kisielk/errcheck/errcheck"
 
 	"honnef.co/go/tools/quickfix"
@@ -24,6 +26,7 @@ import (
 
 func main() {
 	res := []*analysis.Analyzer{
+		osexit.Analyzer,
 		printf.Analyzer,
 		shadow.Analyzer,
 		loopclosure.Analyzer,
