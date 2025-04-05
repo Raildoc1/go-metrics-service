@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kisielk/errcheck/errcheck"
+
 	"honnef.co/go/tools/quickfix"
 	"honnef.co/go/tools/stylecheck"
 
@@ -21,6 +23,8 @@ import (
 
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/printf"
+
+	"github.com/karamaru-alpha/copyloopvar"
 )
 
 const configFileName = `multichecker_config.json`
@@ -49,6 +53,8 @@ func main() {
 		loopclosure.Analyzer,
 		nilness.Analyzer,
 		structtag.Analyzer,
+		errcheck.Analyzer,
+		copyloopvar.NewAnalyzer(),
 	}
 
 	res = appendStaticcheckAnalyzers(res, cfg.Staticcheck)
