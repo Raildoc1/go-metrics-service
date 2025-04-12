@@ -2,8 +2,8 @@ package poller
 
 import (
 	"fmt"
-	"go-metrics-service/internal/agent/gohelpers"
 	storagePkg "go-metrics-service/internal/agent/storage"
+	"go-metrics-service/pkg/gohelpers"
 	"math/rand"
 	"runtime"
 	"time"

@@ -110,22 +110,23 @@ func createMux(
 
 	router := chi.NewRouter()
 
-	router.Use(
+	router.With(
 		loggerMiddleware.CreateHandler,
 		requestHashMiddleware.CreateHandler,
 		responseHashMiddleware.CreateHandler,
 		requestDecompressMiddleware.CreateHandler,
-	)
-	router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
-	router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
-	router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
-	router.Get(protocol.PingURL, pingHandler.ServeHTTP)
-	router.With(responseCompressMiddleware.CreateHandler).
-		Route("/", func(router chi.Router) {
-			router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
-			router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
-			router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
-		})
+	).Route("/", func(router chi.Router) {
+		router.Post(protocol.UpdateMetricURL, updateMetricHandler.ServeHTTP)
+		router.Post(protocol.UpdateMetricsURL, updateMetricsHandler.ServeHTTP)
+		router.Post(protocol.UpdateMetricPathParamsURL, updateMetricPathParamsHandler.ServeHTTP)
+		router.Get(protocol.PingURL, pingHandler.ServeHTTP)
+		router.With(responseCompressMiddleware.CreateHandler).
+			Route("/", func(router chi.Router) {
+				router.Post(protocol.GetMetricURL, getMetricValueHandler.ServeHTTP)
+				router.Get(protocol.GetMetricPathParamsURL, getMetricValuePathParamsHandler.ServeHTTP)
+				router.Get(protocol.GetAllMetricsURL, getAllMetricsHandler.ServeHTTP)
+			})
+	})
 
 	return router
 }

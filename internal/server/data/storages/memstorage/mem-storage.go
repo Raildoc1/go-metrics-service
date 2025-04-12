@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"fmt"
-	"go-metrics-service/internal/common/compression"
+	"go-metrics-service/pkg/compression"
 	"io"
 	"sync"
 
@@ -12,9 +12,9 @@ import (
 )
 
 type MemStorage struct {
-	data    rawData
-	rwMutex *sync.RWMutex
-	logger  *zap.Logger
+	data   rawData
+	mux    *sync.Mutex
+	logger *zap.Logger
 }
 
 type rawData struct {
@@ -26,8 +26,8 @@ func New(logger *zap.Logger) *MemStorage {
 		data: rawData{
 			Values: make(map[string]any),
 		},
-		rwMutex: &sync.RWMutex{},
-		logger:  logger,
+		mux:    &sync.Mutex{},
+		logger: logger,
 	}
 }
 
@@ -48,14 +48,14 @@ func LoadFrom(reader io.Reader, logger *zap.Logger) (*MemStorage, error) {
 		data: rawData{
 			Values: readData.Values,
 		},
-		rwMutex: &sync.RWMutex{},
-		logger:  logger,
+		mux:    &sync.Mutex{},
+		logger: logger,
 	}, nil
 }
 
 func (s *MemStorage) SaveTo(writer io.Writer) error {
-	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	err := compression.GzipCompress(
 		rawData{
 			Values: s.data.Values,
@@ -74,14 +74,14 @@ func (s *MemStorage) SaveTo(writer io.Writer) error {
 }
 
 func (s *MemStorage) Get(key string) (val any, ok bool) {
-	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	val, ok = s.data.Values[key]
 	return
 }
 func (s *MemStorage) GetAll() map[string]any {
-	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	dataCopy := make(map[string]any)
 	for k, v := range s.data.Values {
 		dataCopy[k] = v
@@ -89,7 +89,7 @@ func (s *MemStorage) GetAll() map[string]any {
 	return dataCopy
 }
 func (s *MemStorage) Set(key string, value any) {
-	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	s.data.Values[key] = value
 }
