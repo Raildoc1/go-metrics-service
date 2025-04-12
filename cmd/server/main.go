@@ -26,7 +26,12 @@ import (
 	"go.uber.org/zap"
 )
 
+var buildVersion string
+var buildDate string
+var buildCommit string
+
 func main() {
+	printBuildInfo()
 	log.Println("Starting server...")
 	cfg, err := config.Load()
 	if err != nil {
@@ -144,4 +149,17 @@ func syncZapLogger(logger *zap.Logger) {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func printBuildInfo() {
+	fmt.Printf("Build Version: %s\n", formatBuildInfo(buildVersion))
+	fmt.Printf("Build Date: %s\n", formatBuildInfo(buildDate))
+	fmt.Printf("Build Commit: %s\n", formatBuildInfo(buildCommit))
+}
+
+func formatBuildInfo(value string) string {
+	if value == "" {
+		return "N/A"
+	}
+	return value
 }
