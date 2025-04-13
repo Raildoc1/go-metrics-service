@@ -17,6 +17,7 @@ import (
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/middleware"
+	"go-metrics-service/pkg/rsahelpers"
 	"log"
 	"os/signal"
 	"syscall"
@@ -119,7 +120,24 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
 	}
 
-	srv := server.New(cfg.Server, rep, tm, hashFactory, pingables, logger)
+	var decoder middleware.Decoder = nil
+	if cfg.RSAPrivateKey != nil {
+		d, err := rsahelpers.NewOAEPDecoder(cfg.RSAPrivateKey)
+		if err != nil {
+			return err
+		}
+		decoder = d
+	}
+
+	srv := server.New(
+		cfg.Server,
+		rep,
+		tm,
+		hashFactory,
+		pingables,
+		logger,
+		decoder,
+	)
 
 	g.Go(func() error {
 		if err := srv.Run(); err != nil {

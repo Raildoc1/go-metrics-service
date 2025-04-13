@@ -9,7 +9,7 @@ import (
 	senderPkg "go-metrics-service/internal/agent/sender"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/hashing"
-	"go-metrics-service/internal/server/middleware"
+	"go-metrics-service/pkg/rsahelpers"
 	"os/signal"
 	"syscall"
 
@@ -22,12 +22,28 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage, logger)
 
-	var hashFactory middleware.HashFactory = nil
+	var hashFactory senderPkg.HashFactory = nil
 	if cfg.SHA256Key != "" {
 		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
 	}
 
-	sender := senderPkg.New(cfg.ServerAddress, cfg.RetryAttempts, storage, logger, hashFactory)
+	var encoder senderPkg.Encoder
+	if cfg.RSAPublicKey != nil {
+		e, err := rsahelpers.NewOAEPEncoder(cfg.RSAPublicKey)
+		if err != nil {
+			return err
+		}
+		encoder = e
+	}
+
+	sender := senderPkg.New(
+		cfg.ServerAddress,
+		cfg.RetryAttempts,
+		storage,
+		logger,
+		hashFactory,
+		encoder,
+	)
 
 	rootCtx, cancelCtx := signal.NotifyContext(
 		context.Background(),

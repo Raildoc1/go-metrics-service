@@ -10,4 +10,5 @@ type Config struct {
 	RateLimit       int
 	PollingInterval time.Duration
 	SendingInterval time.Duration
+	RSAPublicKey    []byte
 }

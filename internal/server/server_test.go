@@ -28,6 +28,7 @@ func setupServer() *httptest.Server {
 		transactionManager,
 		make([]handlers.Pingable, 0),
 		logger,
+		nil,
 	)
 	return httptest.NewServer(mux)
 }
