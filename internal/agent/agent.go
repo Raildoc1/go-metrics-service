@@ -28,8 +28,8 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	}
 
 	var encoder senderPkg.Encoder
-	if cfg.RSAPublicKey != nil {
-		e, err := rsahelpers.NewOAEPEncoder(cfg.RSAPublicKey)
+	if cfg.RSAPublicKeyPem != nil {
+		e, err := rsahelpers.NewOAEPEncoder(cfg.RSAPublicKeyPem)
 		if err != nil {
 			return err
 		}

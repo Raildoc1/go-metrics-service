@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="server with RSA" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="go-metrics-service" />
+    <working_directory value="$PROJECT_DIR$/../builds/go-metrics-service/rsa/server" />
+    <envs>
+      <env name="CRYPTO_KEY" value="../private.pem" />
+    </envs>
+    <kind value="FILE" />
+    <package value="go-metrics-service" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/server/main.go" />
+    <output_directory value="$PROJECT_DIR$/../builds/go-metrics-service/rsa/server" />
+    <method v="2" />
+  </configuration>
+</component>

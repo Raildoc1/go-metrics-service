@@ -130,14 +130,14 @@ func Load() (Config, error) {
 		*rsaPublicKeyFilePath = valStr
 	}
 
-	var rsaPublicKey []byte = nil
+	var rsaPublicKeyPem []byte = nil
 
 	if *rsaPublicKeyFilePath != "" {
 		pub, err := os.ReadFile(*rsaPublicKeyFilePath)
 		if err != nil {
 			return Config{}, fmt.Errorf("failed to read file '%s': %w", *rsaPublicKeyFilePath, err)
 		}
-		rsaPublicKey = pub
+		rsaPublicKeyPem = pub
 	}
 
 	return Config{
@@ -148,7 +148,7 @@ func Load() (Config, error) {
 			PollingInterval: pollingFreq,
 			RetryAttempts:   defaultRetryAttempts,
 			RateLimit:       *rateLimit,
-			RSAPublicKey:    rsaPublicKey,
+			RSAPublicKeyPem: rsaPublicKeyPem,
 		},
 		Production: false,
 	}, nil

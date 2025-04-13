@@ -121,8 +121,8 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 	}
 
 	var decoder middleware.Decoder = nil
-	if cfg.RSAPrivateKey != nil {
-		d, err := rsahelpers.NewOAEPDecoder(cfg.RSAPrivateKey)
+	if cfg.RSAPrivateKeyPem != "" {
+		d, err := rsahelpers.NewOAEPDecoder([]byte(cfg.RSAPrivateKeyPem))
 		if err != nil {
 			return err
 		}

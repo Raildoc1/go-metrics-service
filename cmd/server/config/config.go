@@ -43,7 +43,7 @@ type Config struct {
 	Server           server.Config
 	ShutdownTimeout  time.Duration
 	Production       bool
-	RSAPrivateKey    []byte
+	RSAPrivateKeyPem string
 }
 
 func Load() (Config, error) {
@@ -127,14 +127,14 @@ func Load() (Config, error) {
 		*rsaPrivateKeyFilePath = valStr
 	}
 
-	var rsaPrivateKey []byte = nil
+	var rsaPrivateKeyPem []byte = nil
 
 	if *rsaPrivateKeyFilePath != "" {
 		prv, err := os.ReadFile(*rsaPrivateKeyFilePath)
 		if err != nil {
 			return Config{}, fmt.Errorf("failed to read file '%s': %w", *rsaPrivateKeyFilePath, err)
 		}
-		rsaPrivateKey = prv
+		rsaPrivateKeyPem = prv
 	}
 
 	return Config{
@@ -153,8 +153,8 @@ func Load() (Config, error) {
 			ServerAddress:   *serverAddress,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
-		SHA256Key:       *sha256Key,
-		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,
-		RSAPrivateKey:   rsaPrivateKey,
+		SHA256Key:        *sha256Key,
+		ShutdownTimeout:  defaultAppShutdownTimeout * time.Second,
+		RSAPrivateKeyPem: string(rsaPrivateKeyPem),
 	}, nil
 }
