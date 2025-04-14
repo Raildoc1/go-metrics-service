@@ -1,3 +1,4 @@
+// Package testutils contains helpers for testing
 package testutils
 
 import (

@@ -1,3 +1,4 @@
+// Package server contains composition root for server
 package server
 
 import (
@@ -43,10 +44,18 @@ func New(
 	hashFactory middleware.HashFactory,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
+	decoder middleware.Decoder,
 ) *Server {
 	srv := &http.Server{
-		Addr:    cfg.ServerAddress,
-		Handler: createMux(hashFactory, repository, transactionManager, pingables, logger),
+		Addr: cfg.ServerAddress,
+		Handler: createMux(
+			hashFactory,
+			repository,
+			transactionManager,
+			pingables,
+			logger,
+			decoder,
+		),
 	}
 
 	res := &Server{
@@ -80,11 +89,20 @@ func createMux(
 	transactionManager TransactionManager,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
+	decoder middleware.Decoder,
 ) *chi.Mux {
 	service := logic.NewService(repository, logger)
 	controller := controllers.NewController(transactionManager, service, logger)
 
 	loggerMiddleware := middleware.NewLogger(logger)
+
+	var decryptMiddleware middlewareFactory
+
+	if decoder != nil {
+		decryptMiddleware = middleware.NewRequestDecoder(decoder, logger)
+	} else {
+		decryptMiddleware = middleware.NewNop()
+	}
 
 	var responseHashMiddleware middlewareFactory
 	var requestHashMiddleware middlewareFactory
@@ -112,6 +130,7 @@ func createMux(
 
 	router.With(
 		loggerMiddleware.CreateHandler,
+		decryptMiddleware.CreateHandler,
 		requestHashMiddleware.CreateHandler,
 		responseHashMiddleware.CreateHandler,
 		requestDecompressMiddleware.CreateHandler,

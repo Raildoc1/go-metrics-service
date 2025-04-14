@@ -1,3 +1,4 @@
+// Package storages
 package storages
 
 import (

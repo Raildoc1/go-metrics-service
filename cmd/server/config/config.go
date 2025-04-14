@@ -1,3 +1,4 @@
+// Package config determines flags, envs, constants and config structs
 package config
 
 import (
@@ -21,6 +22,8 @@ const (
 	restoreEnv             = "RESTORE"
 	dbConnectionStringFlag = "d"
 	dbConnectionStringEnv  = "DATABASE_DSN"
+	rsaPrivateKeyFileFlag  = "crypto-key"
+	rsaPrivateKeyFileEnv   = "CRYPTO_KEY"
 )
 
 const (
@@ -40,6 +43,7 @@ type Config struct {
 	Server           server.Config
 	ShutdownTimeout  time.Duration
 	Production       bool
+	RSAPrivateKeyPem string
 }
 
 func Load() (Config, error) {
@@ -79,6 +83,12 @@ func Load() (Config, error) {
 		"SHA256 key",
 	)
 
+	rsaPrivateKeyFilePath := flag.String(
+		rsaPrivateKeyFileFlag,
+		"",
+		"RSA private key file path",
+	)
+
 	flag.Parse()
 
 	if valStr, ok := os.LookupEnv(common.ServerAddressEnv); ok {
@@ -113,6 +123,20 @@ func Load() (Config, error) {
 		*sha256Key = valStr
 	}
 
+	if valStr, ok := os.LookupEnv(rsaPrivateKeyFileEnv); ok {
+		*rsaPrivateKeyFilePath = valStr
+	}
+
+	var rsaPrivateKeyPem []byte = nil
+
+	if *rsaPrivateKeyFilePath != "" {
+		prv, err := os.ReadFile(*rsaPrivateKeyFilePath)
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read file '%s': %w", *rsaPrivateKeyFilePath, err)
+		}
+		rsaPrivateKeyPem = prv
+	}
+
 	return Config{
 		Database: database.Config{
 			ConnectionString: *dbConnectionString,
@@ -129,7 +153,8 @@ func Load() (Config, error) {
 			ServerAddress:   *serverAddress,
 			ShutdownTimeout: defaultServerShutdownTimeout * time.Second,
 		},
-		SHA256Key:       *sha256Key,
-		ShutdownTimeout: defaultAppShutdownTimeout * time.Second,
+		SHA256Key:        *sha256Key,
+		ShutdownTimeout:  defaultAppShutdownTimeout * time.Second,
+		RSAPrivateKeyPem: string(rsaPrivateKeyPem),
 	}, nil
 }

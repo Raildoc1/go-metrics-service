@@ -1,3 +1,4 @@
+// Package config determines flags, envs, constants and config structs
 package config
 
 import "time"
@@ -9,4 +10,5 @@ type Config struct {
 	RateLimit       int
 	PollingInterval time.Duration
 	SendingInterval time.Duration
+	RSAPublicKeyPem []byte
 }

@@ -33,7 +33,7 @@ func Retry(
 		if !onFailed(err) {
 			return err
 		}
-		err := SleepCtx(ctx, delay)
+		err = SleepCtx(ctx, delay)
 		if err != nil {
 			return err
 		}

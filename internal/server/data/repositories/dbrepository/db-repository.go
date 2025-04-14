@@ -1,3 +1,4 @@
+// Package dbrepository contains implementation of repository for database storage
 package dbrepository
 
 import (
@@ -62,7 +63,7 @@ func getValue[T any](
 	if err != nil {
 		return defaultVal, fmt.Errorf(dbQueryFailedMsg, err)
 	}
-	if err := row.Err(); err != nil {
+	if err = row.Err(); err != nil {
 		return defaultVal, fmt.Errorf(dbQueryFailedMsg, err)
 	}
 	var c T

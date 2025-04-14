@@ -1,3 +1,4 @@
+// Package hashing contains HMAC factory
 package hashing
 
 import (

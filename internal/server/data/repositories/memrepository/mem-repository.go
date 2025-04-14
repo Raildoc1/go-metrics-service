@@ -1,3 +1,4 @@
+// Package memrepository contains implementation of repository for memstorage
 package memrepository
 
 import (

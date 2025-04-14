@@ -11,7 +11,6 @@ func AggregateErrors(errChs ...chan error) chan error {
 		wg := &sync.WaitGroup{}
 		for _, errCh := range errChs {
 			wg.Add(1)
-			errCh := errCh
 			go func() {
 				defer wg.Done()
 				for err := range errCh {

@@ -1,3 +1,4 @@
+// Package memstorage contains RAM storage implementation
 package memstorage
 
 import (

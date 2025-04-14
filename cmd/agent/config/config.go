@@ -1,3 +1,4 @@
+// Package config determines flags, envs, constants and config structs
 package config
 
 import (
@@ -18,6 +19,8 @@ const (
 	pollingIntervalSecondsEnv  = "POLL_INTERVAL"
 	rateLimitFlag              = "l"
 	rateLimitEnv               = "RATE_LIMIT"
+	rsaPublicKeyFileFlag       = "crypto-key"
+	rsaPublicKeyFileEnv        = "CRYPTO_KEY"
 )
 
 const (
@@ -62,6 +65,12 @@ func Load() (Config, error) {
 		commonConfig.SHA256KeyFlag,
 		"",
 		"SHA256 key",
+	)
+
+	rsaPublicKeyFilePath := flag.String(
+		rsaPublicKeyFileFlag,
+		"",
+		"RSA public key file path",
 	)
 
 	flag.Parse()
@@ -117,6 +126,20 @@ func Load() (Config, error) {
 	pollingFreq := time.Duration(*pollingIntervalSeconds) * time.Second
 	sendingFreq := time.Duration(*sendingIntervalSeconds) * time.Second
 
+	if valStr, ok := os.LookupEnv(rsaPublicKeyFileEnv); ok {
+		*rsaPublicKeyFilePath = valStr
+	}
+
+	var rsaPublicKeyPem []byte = nil
+
+	if *rsaPublicKeyFilePath != "" {
+		pub, err := os.ReadFile(*rsaPublicKeyFilePath)
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read file '%s': %w", *rsaPublicKeyFilePath, err)
+		}
+		rsaPublicKeyPem = pub
+	}
+
 	return Config{
 		Agent: agent.Config{
 			ServerAddress:   *serverAddress,
@@ -125,6 +148,7 @@ func Load() (Config, error) {
 			PollingInterval: pollingFreq,
 			RetryAttempts:   defaultRetryAttempts,
 			RateLimit:       *rateLimit,
+			RSAPublicKeyPem: rsaPublicKeyPem,
 		},
 		Production: false,
 	}, nil

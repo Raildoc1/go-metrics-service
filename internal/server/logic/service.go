@@ -1,3 +1,4 @@
+// Package logic contains logic
 package logic
 
 import (
