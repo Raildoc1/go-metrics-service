@@ -26,9 +26,9 @@ import (
 	"go.uber.org/zap"
 )
 
-var buildVersion string
-var buildDate string
-var buildCommit string
+var buildVersion = "N/A"
+var buildDate = "N/A"
+var buildCommit = "N/A"
 
 func main() {
 	printBuildInfo()
@@ -152,14 +152,7 @@ func syncZapLogger(logger *zap.Logger) {
 }
 
 func printBuildInfo() {
-	fmt.Printf("Build Version: %s\n", formatBuildInfo(buildVersion))
-	fmt.Printf("Build Date: %s\n", formatBuildInfo(buildDate))
-	fmt.Printf("Build Commit: %s\n", formatBuildInfo(buildCommit))
-}
-
-func formatBuildInfo(value string) string {
-	if value == "" {
-		return "N/A"
-	}
-	return value
+	fmt.Printf("Build Version: %s\n", buildVersion)
+	fmt.Printf("Build Date: %s\n", buildDate)
+	fmt.Printf("Build Commit: %s\n", buildCommit)
 }

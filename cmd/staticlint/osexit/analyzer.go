@@ -38,13 +38,13 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			case *ast.BlockStmt:
 				return true
 			case *ast.ExprStmt:
-				if call, ok := n.X.(*ast.CallExpr); ok {
-					if s, ok := call.Fun.(*ast.SelectorExpr); ok {
-						if i, ok := s.X.(*ast.Ident); ok {
-							if i.Name == currentOsPackageName && s.Sel.Name == "Exit" {
-								pass.Reportf(i.NamePos, "os.Exit call from main")
-							}
-						}
+				return true
+			case *ast.CallExpr:
+				return true
+			case *ast.SelectorExpr:
+				if i, ok := n.X.(*ast.Ident); ok {
+					if i.Name == currentOsPackageName && n.Sel.Name == "Exit" {
+						pass.Reportf(i.NamePos, "os.Exit call from main")
 					}
 				}
 			}
