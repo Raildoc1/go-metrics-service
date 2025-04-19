@@ -114,7 +114,7 @@ func Load() (Config, error) {
 		if val, ok := rawJson[common.ServerAddressJSON]; ok {
 			serverAddress = val.(string)
 		}
-		if val, ok := rawJson[needRestoreFlag]; ok {
+		if val, ok := rawJson[needRestoreJSON]; ok {
 			needRestore = val.(bool)
 		}
 		if val, ok := rawJson[storeIntervalJSON]; ok {
