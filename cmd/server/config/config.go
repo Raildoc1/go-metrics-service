@@ -107,29 +107,29 @@ func Load() (Config, error) {
 	}
 
 	if cfgPath != nil {
-		rawJson, err := common.GetRawJSON(*cfgPath)
+		rawJSON, err := common.GetRawJSON(*cfgPath)
 		if err != nil {
 			return Config{}, err
 		}
-		if val, ok := rawJson[common.ServerAddressJSON]; ok {
+		if val, ok := rawJSON[common.ServerAddressJSON]; ok {
 			serverAddress = val.(string)
 		}
-		if val, ok := rawJson[needRestoreJSON]; ok {
+		if val, ok := rawJSON[needRestoreJSON]; ok {
 			needRestore = val.(bool)
 		}
-		if val, ok := rawJson[storeIntervalJSON]; ok {
+		if val, ok := rawJSON[storeIntervalJSON]; ok {
 			storeInterval, err = time.ParseDuration(val.(string))
 			if err != nil {
 				return Config{}, fmt.Errorf("invalid value for store interval: %w", err)
 			}
 		}
-		if val, ok := rawJson[fileStoragePathJSON]; ok {
+		if val, ok := rawJSON[fileStoragePathJSON]; ok {
 			fileStoragePath = val.(string)
 		}
-		if val, ok := rawJson[dbConnectionStringJSON]; ok {
+		if val, ok := rawJSON[dbConnectionStringJSON]; ok {
 			dbConnectionString = val.(string)
 		}
-		if val, ok := rawJson[rsaPrivateKeyFileJSON]; ok {
+		if val, ok := rawJSON[rsaPrivateKeyFileJSON]; ok {
 			rsaPrivateKeyFilePath = val.(string)
 		}
 	}

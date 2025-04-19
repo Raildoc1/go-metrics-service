@@ -89,26 +89,26 @@ func Load() (Config, error) {
 	}
 
 	if cfgPath != nil {
-		rawJson, err := common.GetRawJSON(*cfgPath)
+		rawJSON, err := common.GetRawJSON(*cfgPath)
 		if err != nil {
 			return Config{}, err
 		}
-		if val, ok := rawJson[common.ServerAddressJSON]; ok {
+		if val, ok := rawJSON[common.ServerAddressJSON]; ok {
 			serverAddress = val.(string)
 		}
-		if val, ok := rawJson[sendingIntervalSecondsJSON]; ok {
+		if val, ok := rawJSON[sendingIntervalSecondsJSON]; ok {
 			sendingInterval, err = time.ParseDuration(val.(string))
 			if err != nil {
 				return Config{}, fmt.Errorf("invalid value for sending interval: %w", err)
 			}
 		}
-		if val, ok := rawJson[pollingIntervalSecondsJSON]; ok {
+		if val, ok := rawJSON[pollingIntervalSecondsJSON]; ok {
 			pollingInterval, err = time.ParseDuration(val.(string))
 			if err != nil {
 				return Config{}, fmt.Errorf("invalid value for polling interval: %w", err)
 			}
 		}
-		if val, ok := rawJson[rsaPublicKeyFileJSON]; ok {
+		if val, ok := rawJSON[rsaPublicKeyFileJSON]; ok {
 			rsaPublicKeyFilePath = val.(string)
 		}
 	}
