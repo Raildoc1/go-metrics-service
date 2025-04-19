@@ -31,6 +31,10 @@ type HashFactory interface {
 	Create() hash.Hash
 }
 
+type Encoder interface {
+	Encode([]byte) ([]byte, error)
+}
+
 type Sender struct {
 	logger        *zap.Logger
 	storage       *storagePkg.Storage
@@ -40,6 +44,7 @@ type Sender struct {
 	gaugesCh      chan struct{}
 	host          string
 	attemptsDelay []time.Duration
+	encoder       Encoder
 }
 
 func New(
@@ -48,6 +53,7 @@ func New(
 	storage *storagePkg.Storage,
 	logger *zap.Logger,
 	hashFactory HashFactory,
+	encoder Encoder,
 ) *Sender {
 	return &Sender{
 		host:          host,
@@ -58,6 +64,7 @@ func New(
 		countersCh:    make(chan map[string]int64),
 		gaugesCh:      make(chan struct{}),
 		attemptsDelay: attemptsDelay,
+		encoder:       encoder,
 	}
 }
 
@@ -182,8 +189,18 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 		req = req.SetHeader(protocol.HashHeader, hex.EncodeToString(h.Sum(nil)))
 	}
 
+	bodyBytes := body.Bytes()
+
+	if s.encoder != nil {
+		encoded, err := s.encoder.Encode(bodyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to encode request: %w", err)
+		}
+		bodyBytes = encoded
+	}
+
 	resp, err := req.
-		SetBody(body.Bytes()).
+		SetBody(bodyBytes).
 		SetLogger(NewRestyLogger(s.logger)).
 		SetDebug(true).
 		Post(url)
