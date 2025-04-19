@@ -26,10 +26,10 @@ func GetRawJSON(path string) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read '%s' config file: %w", path, err)
 	}
-	rawJson := make(map[string]any)
-	err = json.Unmarshal(jsonCfgBytes, &rawJson)
+	rawJSON := make(map[string]any)
+	err = json.Unmarshal(jsonCfgBytes, &rawJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse '%s' config file: %w", path, err)
 	}
-	return rawJson, nil
+	return rawJSON, nil
 }
