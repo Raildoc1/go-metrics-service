@@ -88,8 +88,18 @@ func Load() (Config, error) {
 
 	// Config JSON.
 
-	if cfgPath, ok := configFlagVal.Value(); ok {
-		rawJson, err := getRawJSON(cfgPath)
+	var cfgPath *string = nil
+
+	if val, ok := configFlagVal.Value(); ok {
+		cfgPath = &val
+	}
+
+	if valStr, ok := os.LookupEnv(configEnv); ok {
+		cfgPath = &valStr
+	}
+
+	if cfgPath != nil {
+		rawJson, err := getRawJSON(*cfgPath)
 		if err != nil {
 			return Config{}, err
 		}
