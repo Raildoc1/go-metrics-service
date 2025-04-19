@@ -2,11 +2,10 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	commonConfig "go-metrics-service/cmd/common/config"
+	common "go-metrics-service/cmd/common/config"
 	"go-metrics-service/cmd/common/config/flagtypes"
 	agent "go-metrics-service/internal/agent/config"
 	"os"
@@ -26,8 +25,6 @@ const (
 	rsaPublicKeyFileFlag       = "crypto-key"
 	rsaPublicKeyFileEnv        = "CRYPTO_KEY"
 	rsaPublicKeyFileJSON       = "crypto_key"
-	configFlag                 = "c"
-	configEnv                  = "CONFIG"
 )
 
 const (
@@ -45,16 +42,9 @@ type Config struct {
 	Production bool
 }
 
-type ConfigJSON struct {
-	Address        string        `json:"address"`
-	ReportInterval time.Duration `json:"report_interval"`
-	PollInterval   time.Duration `json:"poll_interval"`
-	CryptoKey      string        `json:"crypto_key"`
-}
-
 func Load() (Config, error) {
 
-	serverAddress := commonConfig.DefaultServerAddress
+	serverAddress := common.DefaultServerAddress
 	sendingInterval := defaultSendingInterval
 	pollingInterval := defaultPollingInterval
 	rsaPublicKeyFilePath := defaultRSAPublicKey
@@ -64,10 +54,10 @@ func Load() (Config, error) {
 	// Flags Definition.
 
 	configFlagVal := flagtypes.NewString()
-	flag.Var(configFlagVal, configFlag, "JSON config path")
+	flag.Var(configFlagVal, common.ConfigFlag, "JSON config path")
 
 	serverAddressFlagVal := flagtypes.NewString()
-	flag.Var(serverAddressFlagVal, commonConfig.ServerAddressFlag, "Server address host:port")
+	flag.Var(serverAddressFlagVal, common.ServerAddressFlag, "Server address host:port")
 
 	sendingIntervalSecondsFlagVal := flagtypes.NewInt()
 	flag.Var(sendingIntervalSecondsFlagVal, sendingIntervalSecondsFlag, "Metrics sending frequency in seconds")
@@ -79,7 +69,7 @@ func Load() (Config, error) {
 	flag.Var(rateLimitFlagVal, rateLimitFlag, "Outgoing requests rate limit")
 
 	sha256KeyFlagVal := flagtypes.NewString()
-	flag.Var(sha256KeyFlagVal, commonConfig.SHA256KeyFlag, "SHA256 key")
+	flag.Var(sha256KeyFlagVal, common.SHA256KeyFlag, "SHA256 key")
 
 	rsaPublicKeyFilePathFlagVal := flagtypes.NewString()
 	flag.Var(rsaPublicKeyFilePathFlagVal, rsaPublicKeyFileFlag, "RSA public key file path")
@@ -94,16 +84,16 @@ func Load() (Config, error) {
 		cfgPath = &val
 	}
 
-	if valStr, ok := os.LookupEnv(configEnv); ok {
+	if valStr, ok := os.LookupEnv(common.ConfigEnv); ok {
 		cfgPath = &valStr
 	}
 
 	if cfgPath != nil {
-		rawJson, err := getRawJSON(*cfgPath)
+		rawJson, err := common.GetRawJSON(*cfgPath)
 		if err != nil {
 			return Config{}, err
 		}
-		if val, ok := rawJson[commonConfig.ServerAddressJSON]; ok {
+		if val, ok := rawJson[common.ServerAddressJSON]; ok {
 			serverAddress = val.(string)
 		}
 		if val, ok := rawJson[sendingIntervalSecondsJSON]; ok {
@@ -151,7 +141,7 @@ func Load() (Config, error) {
 
 	// Environment Variables.
 
-	if valStr, ok := os.LookupEnv(commonConfig.ServerAddressEnv); ok {
+	if valStr, ok := os.LookupEnv(common.ServerAddressEnv); ok {
 		serverAddress = valStr
 	}
 
@@ -179,7 +169,7 @@ func Load() (Config, error) {
 		rateLimit = val
 	}
 
-	if valStr, ok := os.LookupEnv(commonConfig.SHA256KeyEnv); ok {
+	if valStr, ok := os.LookupEnv(common.SHA256KeyEnv); ok {
 		sha256Key = valStr
 	}
 
@@ -221,17 +211,4 @@ func Load() (Config, error) {
 		},
 		Production: false,
 	}, nil
-}
-
-func getRawJSON(path string) (map[string]any, error) {
-	jsonCfgBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read '%s' config file: %w", path, err)
-	}
-	rawJson := make(map[string]any)
-	err = json.Unmarshal(jsonCfgBytes, &rawJson)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse '%s' config file: %w", path, err)
-	}
-	return rawJson, nil
 }
