@@ -2,6 +2,7 @@
   <configuration default="false" name="agent with RSA" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="go-metrics-service" />
     <working_directory value="$PROJECT_DIR$/../builds/go-metrics-service/rsa/agent" />
+    <parameters value="-c config.json" />
     <envs>
       <env name="CRYPTO_KEY" value="../public.pem" />
     </envs>

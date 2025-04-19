@@ -4,6 +4,7 @@ package config
 const (
 	ServerAddressFlag = "a"
 	ServerAddressEnv  = "ADDRESS"
+	ServerAddressJSON = "address"
 	SHA256KeyFlag     = "k"
 	SHA256KeyEnv      = "KEY"
 )
