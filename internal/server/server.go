@@ -1,3 +1,4 @@
+// Package server contains composition root for server
 package server
 
 import (

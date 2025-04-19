@@ -1,3 +1,4 @@
+// Package poller contains metrics collecting logic
 package poller
 
 import (

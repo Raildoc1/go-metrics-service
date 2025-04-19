@@ -1,3 +1,4 @@
+// Package config determines flags, envs, constants and config structs
 package config
 
 import (

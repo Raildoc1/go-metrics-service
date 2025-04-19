@@ -1,3 +1,4 @@
+// Package dbstorage implements database storage
 package dbstorage
 
 import (

@@ -1,3 +1,4 @@
+// Package agent contains composition root for agent
 package agent
 
 import (
