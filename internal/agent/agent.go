@@ -58,6 +58,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	g, ctx := errgroup.WithContext(rootCtx)
 
 	g.Go(func() error {
+		defer logger.Info("Poller errors handler stopped")
 		errCh := poller.Start(cfg.PollingInterval)
 		for err := range errCh {
 			logger.Error("poller error", zap.Error(err))
@@ -73,6 +74,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	})
 
 	g.Go(func() error {
+		defer logger.Info("Sender errors handler stopped")
 		errCh := sender.Start(cfg.SendingInterval, cfg.RateLimit)
 		for err := range errCh {
 			logger.Error("sender error", zap.Error(err))

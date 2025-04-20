@@ -11,7 +11,7 @@ import (
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/protocol"
 	"go-metrics-service/pkg/compression"
-	gohelpers2 "go-metrics-service/pkg/gohelpers"
+	"go-metrics-service/pkg/gohelpers"
 	"go-metrics-service/pkg/timeutils"
 	"hash"
 	"io"
@@ -73,8 +73,8 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 
 	errChs = append(
 		errChs,
-		gohelpers2.StartTickerProcess(s.doneCh, s.Schedule, interval),
-		gohelpers2.StartProcess[struct{}](
+		gohelpers.StartTickerProcess(s.doneCh, s.Schedule, interval),
+		gohelpers.StartProcess[struct{}](
 			s.doneCh,
 			s.sendGaugesUpdate,
 			func() {},
@@ -83,7 +83,7 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 	)
 
 	for range workersCount {
-		errChs = append(errChs, gohelpers2.StartProcess[map[string]int64](
+		errChs = append(errChs, gohelpers.StartProcess[map[string]int64](
 			s.doneCh,
 			s.sendCountersUpdate,
 			func() {},
@@ -91,21 +91,21 @@ func (s *Sender) Start(interval time.Duration, workersCount int) chan error {
 		))
 	}
 
-	return gohelpers2.AggregateErrors(errChs...)
+	return gohelpers.AggregateErrors(errChs...)
 }
 
 func (s *Sender) Stop() {
 	close(s.doneCh)
 }
 
-func (s *Sender) Schedule() error {
+func (s *Sender) Schedule(_ context.Context) error {
 	s.gaugesCh <- struct{}{}
 	c := s.storage.ConsumeUncommitedCounters()
 	s.countersCh <- c
 	return nil
 }
 
-func (s *Sender) sendCountersUpdate(counterDeltas map[string]int64) error {
+func (s *Sender) sendCountersUpdate(ctx context.Context, counterDeltas map[string]int64) error {
 	metricsToSend := make([]protocol.Metrics, 0, len(counterDeltas))
 
 	for k, v := range counterDeltas {
@@ -120,10 +120,10 @@ func (s *Sender) sendCountersUpdate(counterDeltas map[string]int64) error {
 		)
 	}
 
-	return s.sendUpdatesWithRetry(metricsToSend)
+	return s.sendUpdatesWithRetry(ctx, metricsToSend)
 }
 
-func (s *Sender) sendGaugesUpdate(_ struct{}) error {
+func (s *Sender) sendGaugesUpdate(ctx context.Context, _ struct{}) error {
 	return s.storage.HandleUncommitedGauges( //nolint:wrapcheck // wrapping unnecessary
 		func(uncommitedValues map[string]float64) error {
 			metricsToSend := make([]protocol.Metrics, 0, len(uncommitedValues))
@@ -140,16 +140,16 @@ func (s *Sender) sendGaugesUpdate(_ struct{}) error {
 				)
 			}
 
-			return s.sendUpdates(metricsToSend)
+			return s.sendUpdates(ctx, metricsToSend)
 		})
 }
 
-func (s *Sender) sendUpdatesWithRetry(metrics []protocol.Metrics) error {
+func (s *Sender) sendUpdatesWithRetry(ctx context.Context, metrics []protocol.Metrics) error {
 	return timeutils.Retry( //nolint:wrapcheck // wrapping unnecessary
-		context.Background(),
+		ctx,
 		s.attemptsDelay,
 		func(ctx context.Context) error {
-			return s.sendUpdates(metrics)
+			return s.sendUpdates(ctx, metrics)
 		},
 		func(err error) bool {
 			s.logger.Error("sending updates failed", zap.Error(err))
@@ -157,7 +157,7 @@ func (s *Sender) sendUpdatesWithRetry(metrics []protocol.Metrics) error {
 		})
 }
 
-func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
+func (s *Sender) sendUpdates(ctx context.Context, metrics []protocol.Metrics) error {
 	url := s.createURL(protocol.UpdateMetricsURL)
 	var body bytes.Buffer
 	err := compression.GzipCompress(
@@ -203,6 +203,7 @@ func (s *Sender) sendUpdates(metrics []protocol.Metrics) error {
 		SetBody(bodyBytes).
 		SetLogger(NewRestyLogger(s.logger)).
 		SetDebug(true).
+		SetContext(ctx).
 		Post(url)
 	if err != nil {
 		if errors.Is(err, syscall.ECONNREFUSED) {
