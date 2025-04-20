@@ -29,10 +29,10 @@ func StartProcess[T any](
 ) chan error {
 	errCh := make(chan error)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		defer cancel()
 		defer close(errCh)
 		defer afterStop()
 
