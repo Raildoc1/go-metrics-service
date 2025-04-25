@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 )
@@ -22,7 +23,7 @@ func NewOAEPDecoder(privatePem []byte) (*OAEPDecoder, error) {
 	}
 	prv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 	return &OAEPDecoder{
 		privateKey: prv.(*rsa.PrivateKey),
@@ -46,7 +47,7 @@ func DecryptOAEP(hash hash.Hash, private *rsa.PrivateKey, msg []byte, label []by
 
 		decryptedBlockBytes, err := rsa.DecryptOAEP(hash, nil, private, msg[start:finish], label)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("block decryption failed: %w", err)
 		}
 
 		decryptedBytes = append(decryptedBytes, decryptedBlockBytes...)
@@ -66,7 +67,7 @@ func NewOAEPEncoder(publicPem []byte) (*OAEPEncoder, error) {
 	}
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid public key: %w", err)
 	}
 	return &OAEPEncoder{
 		publicKey: pub.(*rsa.PublicKey),
@@ -90,7 +91,7 @@ func EncryptOAEP(hash hash.Hash, random io.Reader, public *rsa.PublicKey, msg []
 		}
 		encryptedBlockBytes, err := rsa.EncryptOAEP(hash, random, public, msg[start:finish], label)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("block encryption failed: %w", err)
 		}
 
 		encryptedBytes = append(encryptedBytes, encryptedBlockBytes...)
