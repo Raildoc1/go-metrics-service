@@ -45,17 +45,24 @@ func New(
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 	decoder middleware.Decoder,
-) *Server {
+) (*Server, error) {
+	mux, err := createMux(
+		hashFactory,
+		repository,
+		transactionManager,
+		pingables,
+		logger,
+		decoder,
+		cfg.TrustedSubnet,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &http.Server{
-		Addr: cfg.ServerAddress,
-		Handler: createMux(
-			hashFactory,
-			repository,
-			transactionManager,
-			pingables,
-			logger,
-			decoder,
-		),
+		Addr:    cfg.ServerAddress,
+		Handler: mux,
 	}
 
 	res := &Server{
@@ -64,7 +71,7 @@ func New(
 		httpServer: srv,
 	}
 
-	return res
+	return res, nil
 }
 
 func (s *Server) Run() error {
@@ -90,11 +97,24 @@ func createMux(
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 	decoder middleware.Decoder,
-) *chi.Mux {
+	trustedSubnet string,
+) (*chi.Mux, error) {
 	service := logic.NewService(repository, logger)
 	controller := controllers.NewController(transactionManager, service, logger)
 
 	loggerMiddleware := middleware.NewLogger(logger)
+
+	var subnetFilterMiddleware middlewareFactory
+
+	if trustedSubnet != "" {
+		mw, err := middleware.NewSubnetFilter(logger, trustedSubnet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create subnet filter: %w", err)
+		}
+		subnetFilterMiddleware = mw
+	} else {
+		subnetFilterMiddleware = middleware.NewNop()
+	}
 
 	var decryptMiddleware middlewareFactory
 
@@ -130,6 +150,7 @@ func createMux(
 
 	router.With(
 		loggerMiddleware.CreateHandler,
+		subnetFilterMiddleware.CreateHandler,
 		decryptMiddleware.CreateHandler,
 		requestHashMiddleware.CreateHandler,
 		responseHashMiddleware.CreateHandler,
@@ -147,5 +168,5 @@ func createMux(
 			})
 	})
 
-	return router
+	return router, nil
 }

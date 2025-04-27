@@ -31,6 +31,9 @@ const (
 	rsaPrivateKeyFileFlag  = "crypto-key"
 	rsaPrivateKeyFileEnv   = "CRYPTO_KEY"
 	rsaPrivateKeyFileJSON  = "crypto_key"
+	trustedSubnetFlag      = "t"
+	trustedSubnetEnv       = "TRUSTED_SUBNET"
+	trustedSubnetJSON      = "trusted_subnet"
 )
 
 const (
@@ -42,6 +45,7 @@ const (
 	defaultDBConnectionString    = ""
 	defaultSHA256Key             = ""
 	defaultRSAPrivateKeyFilePath = ""
+	defaultTrustedSubnet         = ""
 )
 
 var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
@@ -65,6 +69,7 @@ func Load() (Config, error) {
 	dbConnectionString := defaultDBConnectionString
 	sha256Key := defaultSHA256Key
 	rsaPrivateKeyFilePath := defaultRSAPrivateKeyFilePath
+	trustedSubnet := defaultTrustedSubnet
 
 	// Flags Definition.
 
@@ -91,6 +96,9 @@ func Load() (Config, error) {
 
 	rsaPrivateKeyFilePathFlagVal := flagtypes.NewString()
 	flag.Var(rsaPrivateKeyFilePathFlagVal, rsaPrivateKeyFileFlag, "RSA private key file path")
+
+	trustedSubnetFlagVal := flagtypes.NewString()
+	flag.Var(trustedSubnetFlagVal, trustedSubnetFlag, "Trusted subnet CIDR")
 
 	flag.Parse()
 
@@ -132,6 +140,9 @@ func Load() (Config, error) {
 		if val, ok := rawJSON[rsaPrivateKeyFileJSON]; ok {
 			rsaPrivateKeyFilePath = val.(string)
 		}
+		if val, ok := rawJSON[trustedSubnetJSON]; ok {
+			trustedSubnet = val.(string)
+		}
 	}
 
 	// Flags Parse.
@@ -162,6 +173,10 @@ func Load() (Config, error) {
 
 	if val, ok := rsaPrivateKeyFilePathFlagVal.Value(); ok {
 		rsaPrivateKeyFilePath = val
+	}
+
+	if val, ok := trustedSubnetFlagVal.Value(); ok {
+		trustedSubnet = val
 	}
 
 	// Environment Variables.
@@ -202,6 +217,10 @@ func Load() (Config, error) {
 		rsaPrivateKeyFilePath = valStr
 	}
 
+	if valStr, ok := os.LookupEnv(trustedSubnetEnv); ok {
+		trustedSubnet = valStr
+	}
+
 	// Validation.
 
 	if storeInterval < time.Duration(0) {
@@ -235,6 +254,7 @@ func Load() (Config, error) {
 		Server: server.Config{
 			ServerAddress:   serverAddress,
 			ShutdownTimeout: defaultServerShutdownTimeout,
+			TrustedSubnet:   trustedSubnet,
 		},
 		SHA256Key:        sha256Key,
 		ShutdownTimeout:  defaultAppShutdownTimeout,

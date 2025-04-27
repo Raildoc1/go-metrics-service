@@ -129,7 +129,7 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 		decoder = d
 	}
 
-	srv := server.New(
+	srv, err := server.New(
 		cfg.Server,
 		rep,
 		tm,
@@ -138,6 +138,9 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 		logger,
 		decoder,
 	)
+	if err != nil {
+		return err
+	}
 
 	g.Go(func() error {
 		if err := srv.Run(); err != nil {

@@ -15,6 +15,7 @@ import (
 	"go-metrics-service/pkg/timeutils"
 	"hash"
 	"io"
+	"net"
 	"net/http"
 	"syscall"
 	"time"
@@ -45,6 +46,7 @@ type Sender struct {
 	host          string
 	attemptsDelay []time.Duration
 	encoder       Encoder
+	ip            net.IP
 }
 
 func New(
@@ -54,6 +56,7 @@ func New(
 	logger *zap.Logger,
 	hashFactory HashFactory,
 	encoder Encoder,
+	ip net.IP,
 ) *Sender {
 	return &Sender{
 		host:          host,
@@ -65,6 +68,7 @@ func New(
 		gaugesCh:      make(chan struct{}),
 		attemptsDelay: attemptsDelay,
 		encoder:       encoder,
+		ip:            ip,
 	}
 }
 
@@ -178,7 +182,8 @@ func (s *Sender) sendUpdates(ctx context.Context, metrics []protocol.Metrics) er
 	req := resty.New().
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip")
+		SetHeader("Content-Encoding", "gzip").
+		SetHeader("X-Real-IP", s.ip.String())
 
 	if s.hashFactory != nil {
 		h := s.hashFactory.Create()

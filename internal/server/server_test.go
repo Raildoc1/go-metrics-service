@@ -17,24 +17,29 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func setupServer() *httptest.Server {
+func setupServer() (*httptest.Server, error) {
 	logger := logging.CreateZapLogger(true)
 	memStorage := memstorage.New(logger)
 	memRepository := memrepository.New(memStorage, logger)
 	transactionManager := storages.NewDummyTransactionsManager()
-	mux := createMux(
+	mux, err := createMux(
 		nil,
 		memRepository,
 		transactionManager,
 		make([]handlers.Pingable, 0),
 		logger,
 		nil,
+		"",
 	)
-	return httptest.NewServer(mux)
+	if err != nil {
+		return nil, err
+	}
+	return httptest.NewServer(mux), nil
 }
 
 func TestUpdate(t *testing.T) {
-	server := setupServer()
+	server, err := setupServer()
+	assert.NoError(t, err)
 	defer server.Close()
 
 	type want struct {
