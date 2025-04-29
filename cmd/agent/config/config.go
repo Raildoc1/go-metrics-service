@@ -5,7 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	commonConfig "go-metrics-service/cmd/common/config"
+	common "go-metrics-service/cmd/common/config"
+	"go-metrics-service/cmd/common/config/flagtypes"
 	agent "go-metrics-service/internal/agent/config"
 	"os"
 	"strconv"
@@ -15,16 +16,23 @@ import (
 const (
 	sendingIntervalSecondsFlag = "r"
 	sendingIntervalSecondsEnv  = "REPORT_INTERVAL"
+	sendingIntervalSecondsJSON = "report_interval"
 	pollingIntervalSecondsFlag = "p"
 	pollingIntervalSecondsEnv  = "POLL_INTERVAL"
+	pollingIntervalSecondsJSON = "poll_interval"
 	rateLimitFlag              = "l"
 	rateLimitEnv               = "RATE_LIMIT"
+	rsaPublicKeyFileFlag       = "crypto-key"
+	rsaPublicKeyFileEnv        = "CRYPTO_KEY"
+	rsaPublicKeyFileJSON       = "crypto_key"
 )
 
 const (
-	defaultSendingIntervalSeconds = 10
-	defaultPollingIntervalSeconds = 2
-	defaultRateLimit              = 2
+	defaultSendingInterval = time.Second * 10
+	defaultPollingInterval = time.Second * 2
+	defaultRateLimit       = 2
+	defaultRSAPublicKey    = ""
+	defaultSHA256Key       = ""
 )
 
 var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
@@ -35,48 +43,106 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	serverAddress := flag.String(
-		commonConfig.ServerAddressFlag,
-		commonConfig.DefaultServerAddress,
-		"Server address host:port",
-	)
 
-	sendingIntervalSeconds := flag.Int(
-		sendingIntervalSecondsFlag,
-		defaultSendingIntervalSeconds,
-		"Metrics sending frequency in seconds",
-	)
+	serverAddress := common.DefaultServerAddress
+	sendingInterval := defaultSendingInterval
+	pollingInterval := defaultPollingInterval
+	rsaPublicKeyFilePath := defaultRSAPublicKey
+	sha256Key := defaultSHA256Key
+	rateLimit := defaultRateLimit
 
-	pollingIntervalSeconds := flag.Int(
-		pollingIntervalSecondsFlag,
-		defaultPollingIntervalSeconds,
-		"Metrics polling frequency in seconds",
-	)
+	// Flags Definition.
 
-	rateLimit := flag.Int(
-		rateLimitFlag,
-		defaultRateLimit,
-		"Outgoing requests rate limit",
-	)
+	configFlagVal := flagtypes.NewString()
+	flag.Var(configFlagVal, common.ConfigFlag, "JSON config path")
 
-	sha256Key := flag.String(
-		commonConfig.SHA256KeyFlag,
-		"",
-		"SHA256 key",
-	)
+	serverAddressFlagVal := flagtypes.NewString()
+	flag.Var(serverAddressFlagVal, common.ServerAddressFlag, "Server address host:port")
+
+	sendingIntervalSecondsFlagVal := flagtypes.NewInt()
+	flag.Var(sendingIntervalSecondsFlagVal, sendingIntervalSecondsFlag, "Metrics sending frequency in seconds")
+
+	pollingIntervalSecondsFlagVal := flagtypes.NewInt()
+	flag.Var(pollingIntervalSecondsFlagVal, pollingIntervalSecondsFlag, "Metrics polling frequency in seconds")
+
+	rateLimitFlagVal := flagtypes.NewInt()
+	flag.Var(rateLimitFlagVal, rateLimitFlag, "Outgoing requests rate limit")
+
+	sha256KeyFlagVal := flagtypes.NewString()
+	flag.Var(sha256KeyFlagVal, common.SHA256KeyFlag, "SHA256 key")
+
+	rsaPublicKeyFilePathFlagVal := flagtypes.NewString()
+	flag.Var(rsaPublicKeyFilePathFlagVal, rsaPublicKeyFileFlag, "RSA public key file path")
 
 	flag.Parse()
 
-	if *sendingIntervalSeconds <= 0 {
-		return Config{}, errors.New("sending frequency must be greater than zero")
+	// Config JSON.
+
+	var cfgPath *string = nil
+
+	if val, ok := configFlagVal.Value(); ok {
+		cfgPath = &val
 	}
 
-	if *pollingIntervalSeconds <= 0 {
-		return Config{}, errors.New("polling frequency must be greater than zero")
+	if valStr, ok := os.LookupEnv(common.ConfigEnv); ok {
+		cfgPath = &valStr
 	}
 
-	if valStr, ok := os.LookupEnv(commonConfig.ServerAddressEnv); ok {
-		*serverAddress = valStr
+	if cfgPath != nil {
+		rawJSON, err := common.GetRawJSON(*cfgPath)
+		if err != nil {
+			return Config{}, err
+		}
+		if val, ok := rawJSON[common.ServerAddressJSON]; ok {
+			serverAddress = val.(string)
+		}
+		if val, ok := rawJSON[sendingIntervalSecondsJSON]; ok {
+			sendingInterval, err = time.ParseDuration(val.(string))
+			if err != nil {
+				return Config{}, fmt.Errorf("invalid value for sending interval: %w", err)
+			}
+		}
+		if val, ok := rawJSON[pollingIntervalSecondsJSON]; ok {
+			pollingInterval, err = time.ParseDuration(val.(string))
+			if err != nil {
+				return Config{}, fmt.Errorf("invalid value for polling interval: %w", err)
+			}
+		}
+		if val, ok := rawJSON[rsaPublicKeyFileJSON]; ok {
+			rsaPublicKeyFilePath = val.(string)
+		}
+	}
+
+	// Flags Parse.
+
+	if val, ok := serverAddressFlagVal.Value(); ok {
+		serverAddress = val
+	}
+
+	if val, ok := sendingIntervalSecondsFlagVal.Value(); ok {
+		sendingInterval = time.Duration(val) * time.Second
+	}
+
+	if val, ok := pollingIntervalSecondsFlagVal.Value(); ok {
+		pollingInterval = time.Duration(val) * time.Second
+	}
+
+	if val, ok := rateLimitFlagVal.Value(); ok {
+		rateLimit = val
+	}
+
+	if val, ok := sha256KeyFlagVal.Value(); ok {
+		sha256Key = val
+	}
+
+	if val, ok := rsaPublicKeyFilePathFlagVal.Value(); ok {
+		rsaPublicKeyFilePath = val
+	}
+
+	// Environment Variables.
+
+	if valStr, ok := os.LookupEnv(common.ServerAddressEnv); ok {
+		serverAddress = valStr
 	}
 
 	if valStr, ok := os.LookupEnv(sendingIntervalSecondsEnv); ok {
@@ -84,7 +150,7 @@ func Load() (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("%w: '%s' env variable parsing failed", err, sendingIntervalSecondsEnv)
 		}
-		*sendingIntervalSeconds = val
+		sendingInterval = time.Duration(val) * time.Second
 	}
 
 	if valStr, ok := os.LookupEnv(pollingIntervalSecondsEnv); ok {
@@ -92,7 +158,7 @@ func Load() (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("%w: '%s' env variable parsing failed", err, pollingIntervalSecondsEnv)
 		}
-		*pollingIntervalSeconds = val
+		pollingInterval = time.Duration(val) * time.Second
 	}
 
 	if valStr, ok := os.LookupEnv(rateLimitEnv); ok {
@@ -100,32 +166,48 @@ func Load() (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("%w: '%s' env variable parsing failed", err, rateLimitEnv)
 		}
-		*rateLimit = val
+		rateLimit = val
 	}
 
-	if valStr, ok := os.LookupEnv(commonConfig.SHA256KeyEnv); ok {
-		*sha256Key = valStr
+	if valStr, ok := os.LookupEnv(common.SHA256KeyEnv); ok {
+		sha256Key = valStr
 	}
 
-	if *sendingIntervalSeconds <= 0 {
+	if valStr, ok := os.LookupEnv(rsaPublicKeyFileEnv); ok {
+		rsaPublicKeyFilePath = valStr
+	}
+
+	// Validation.
+
+	if sendingInterval < time.Duration(0) {
 		return Config{}, errors.New("sending frequency must be greater than zero")
 	}
 
-	if *pollingIntervalSeconds <= 0 {
+	if pollingInterval < time.Duration(0) {
 		return Config{}, errors.New("polling frequency must be greater than zero")
 	}
 
-	pollingFreq := time.Duration(*pollingIntervalSeconds) * time.Second
-	sendingFreq := time.Duration(*sendingIntervalSeconds) * time.Second
+	// RSA pem file reading.
+
+	var rsaPublicKeyPem []byte = nil
+
+	if rsaPublicKeyFilePath != "" {
+		pub, err := os.ReadFile(rsaPublicKeyFilePath)
+		if err != nil {
+			return Config{}, fmt.Errorf("failed to read file '%s': %w", rsaPublicKeyFilePath, err)
+		}
+		rsaPublicKeyPem = pub
+	}
 
 	return Config{
 		Agent: agent.Config{
-			ServerAddress:   *serverAddress,
-			SHA256Key:       *sha256Key,
-			SendingInterval: sendingFreq,
-			PollingInterval: pollingFreq,
+			ServerAddress:   serverAddress,
+			SHA256Key:       sha256Key,
+			SendingInterval: sendingInterval,
+			PollingInterval: pollingInterval,
 			RetryAttempts:   defaultRetryAttempts,
-			RateLimit:       *rateLimit,
+			RateLimit:       rateLimit,
+			RSAPublicKeyPem: rsaPublicKeyPem,
 		},
 		Production: false,
 	}, nil

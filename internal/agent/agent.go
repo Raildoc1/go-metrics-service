@@ -9,7 +9,7 @@ import (
 	senderPkg "go-metrics-service/internal/agent/sender"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/hashing"
-	"go-metrics-service/internal/server/middleware"
+	"go-metrics-service/pkg/rsahelpers"
 	"os/signal"
 	"syscall"
 
@@ -22,12 +22,28 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage, logger)
 
-	var hashFactory middleware.HashFactory = nil
+	var hashFactory senderPkg.HashFactory = nil
 	if cfg.SHA256Key != "" {
 		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
 	}
 
-	sender := senderPkg.New(cfg.ServerAddress, cfg.RetryAttempts, storage, logger, hashFactory)
+	var encoder senderPkg.Encoder
+	if cfg.RSAPublicKeyPem != nil {
+		e, err := rsahelpers.NewOAEPEncoder(cfg.RSAPublicKeyPem)
+		if err != nil {
+			return err
+		}
+		encoder = e
+	}
+
+	sender := senderPkg.New(
+		cfg.ServerAddress,
+		cfg.RetryAttempts,
+		storage,
+		logger,
+		hashFactory,
+		encoder,
+	)
 
 	rootCtx, cancelCtx := signal.NotifyContext(
 		context.Background(),
@@ -42,6 +58,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	g, ctx := errgroup.WithContext(rootCtx)
 
 	g.Go(func() error {
+		defer logger.Info("Poller errors handler stopped")
 		errCh := poller.Start(cfg.PollingInterval)
 		for err := range errCh {
 			logger.Error("poller error", zap.Error(err))
@@ -57,6 +74,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	})
 
 	g.Go(func() error {
+		defer logger.Info("Sender errors handler stopped")
 		errCh := sender.Start(cfg.SendingInterval, cfg.RateLimit)
 		for err := range errCh {
 			logger.Error("sender error", zap.Error(err))

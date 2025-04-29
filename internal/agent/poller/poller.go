@@ -2,6 +2,7 @@
 package poller
 
 import (
+	"context"
 	"fmt"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/pkg/gohelpers"
@@ -61,7 +62,7 @@ func (p *Poller) PollProcess(f func(), interval time.Duration, errCh chan error)
 	}
 }
 
-func (p *Poller) CollectRuntimeMetrics() error {
+func (p *Poller) CollectRuntimeMetrics(_ context.Context) error {
 	runtimeMetrics := runtime.MemStats{}
 	runtime.ReadMemStats(&runtimeMetrics)
 
@@ -105,7 +106,7 @@ func (p *Poller) CollectRuntimeMetrics() error {
 	return nil
 }
 
-func (p *Poller) CollectGopsutilCPUMetrics() error {
+func (p *Poller) CollectGopsutilCPUMetrics(_ context.Context) error {
 	cpuInfos, err := cpu.Percent(0, true)
 	if err != nil {
 		return fmt.Errorf("failed to get cpu info: %w", err)
@@ -118,7 +119,7 @@ func (p *Poller) CollectGopsutilCPUMetrics() error {
 	return nil
 }
 
-func (p *Poller) CollectGopsutilMemMetrics() error {
+func (p *Poller) CollectGopsutilMemMetrics(_ context.Context) error {
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
 		return fmt.Errorf("failed to get mem info: %w", err)
