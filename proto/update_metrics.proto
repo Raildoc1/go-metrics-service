@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+import "proto/types.proto";
+
+package protocol;
+
+option go_package = "internal/common/protocol/proto";
+
+message UpdateMetricsRequest {
+  repeated Metric values = 1;
+}
+
+message UpdateMetricsResponse {
+  string error = 1;
+}
+
+service UpdateMetrics {
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+}
