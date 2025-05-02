@@ -1,74 +1,44 @@
 package sender
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/pkg/compression"
 	"go-metrics-service/pkg/gohelpers"
 	"go-metrics-service/pkg/timeutils"
-	"hash"
-	"io"
-	"net"
-	"net/http"
-	"syscall"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 )
 
-var (
-	ErrServerUnavailable = errors.New("server unavailable")
-)
-
-type HashFactory interface {
-	Create() hash.Hash
-}
-
-type Encoder interface {
-	Encode([]byte) ([]byte, error)
+type Driver interface {
+	SendUpdates(ctx context.Context, metrics []protocol.Metrics) error
 }
 
 type Sender struct {
 	logger        *zap.Logger
 	storage       *storagePkg.Storage
-	hashFactory   HashFactory
 	doneCh        chan struct{}
 	countersCh    chan map[string]int64
 	gaugesCh      chan struct{}
-	host          string
 	attemptsDelay []time.Duration
-	encoder       Encoder
-	ip            net.IP
+	driver        Driver
 }
 
 func New(
-	host string,
 	attemptsDelay []time.Duration,
 	storage *storagePkg.Storage,
 	logger *zap.Logger,
-	hashFactory HashFactory,
-	encoder Encoder,
-	ip net.IP,
+	driver Driver,
 ) *Sender {
 	return &Sender{
-		host:          host,
 		storage:       storage,
 		logger:        logger,
-		hashFactory:   hashFactory,
 		doneCh:        make(chan struct{}),
 		countersCh:    make(chan map[string]int64),
 		gaugesCh:      make(chan struct{}),
 		attemptsDelay: attemptsDelay,
-		encoder:       encoder,
-		ip:            ip,
+		driver:        driver,
 	}
 }
 
@@ -162,66 +132,5 @@ func (s *Sender) sendUpdatesWithRetry(ctx context.Context, metrics []protocol.Me
 }
 
 func (s *Sender) sendUpdates(ctx context.Context, metrics []protocol.Metrics) error {
-	url := s.createURL(protocol.UpdateMetricsURL)
-	var body bytes.Buffer
-	err := compression.GzipCompress(
-		metrics,
-		func(writer io.Writer) compression.Encoder {
-			je := json.NewEncoder(writer)
-			je.SetIndent("", "")
-			return je
-		},
-		&body,
-		gzip.BestSpeed,
-		s.logger,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to compress request: %w", err)
-	}
-
-	req := resty.New().
-		R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip").
-		SetHeader("X-Real-IP", s.ip.String())
-
-	if s.hashFactory != nil {
-		h := s.hashFactory.Create()
-		_, err = h.Write(body.Bytes())
-		if err != nil {
-			return fmt.Errorf("failed to hash: %w", err)
-		}
-		req = req.SetHeader(protocol.HashHeader, hex.EncodeToString(h.Sum(nil)))
-	}
-
-	bodyBytes := body.Bytes()
-
-	if s.encoder != nil {
-		encoded, err := s.encoder.Encode(bodyBytes)
-		if err != nil {
-			return fmt.Errorf("failed to encode request: %w", err)
-		}
-		bodyBytes = encoded
-	}
-
-	resp, err := req.
-		SetBody(bodyBytes).
-		SetLogger(NewRestyLogger(s.logger)).
-		SetDebug(true).
-		SetContext(ctx).
-		Post(url)
-	if err != nil {
-		if errors.Is(err, syscall.ECONNREFUSED) {
-			return fmt.Errorf("%w: %w", err, ErrServerUnavailable)
-		}
-		return fmt.Errorf("%w: update failed", err)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("failed to send updates to %s: %d", s.host, resp.StatusCode())
-	}
-	return nil
-}
-
-func (s *Sender) createURL(path string) string {
-	return fmt.Sprintf("http://%s%s", s.host, path)
+	return s.driver.SendUpdates(ctx, metrics)
 }

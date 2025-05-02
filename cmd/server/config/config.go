@@ -55,6 +55,7 @@ type Config struct {
 	Database         database.Config
 	BackupMemStorage backupmemstorage.Config
 	Server           server.Config
+	GRPCServer       server.GRPCConfig
 	ShutdownTimeout  time.Duration
 	Production       bool
 	RSAPrivateKeyPem string
@@ -255,6 +256,9 @@ func Load() (Config, error) {
 			ServerAddress:   serverAddress,
 			ShutdownTimeout: defaultServerShutdownTimeout,
 			TrustedSubnet:   trustedSubnet,
+		},
+		GRPCServer: server.GRPCConfig{
+			Port: 3200,
 		},
 		SHA256Key:        sha256Key,
 		ShutdownTimeout:  defaultAppShutdownTimeout,

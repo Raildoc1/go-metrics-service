@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"go-metrics-service/internal/common/protocol"
-	"go-metrics-service/internal/server/controllers"
 	"go-metrics-service/internal/server/handlers"
 	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
@@ -23,13 +22,14 @@ type Repository interface {
 	logic.Repository
 }
 
-type TransactionManager interface {
-	controllers.TransactionManager
+type Controller interface {
+	handlers.MetricController
 }
 
-type Server struct {
+type HTTPServer struct {
 	logger     *zap.Logger
 	httpServer *http.Server
+	controller Controller
 	cfg        Config
 }
 
@@ -37,19 +37,19 @@ type middlewareFactory interface {
 	CreateHandler(next http.Handler) http.Handler
 }
 
-func New(
+func NewHTTP(
 	cfg Config,
 	repository Repository,
-	transactionManager TransactionManager,
 	hashFactory middleware.HashFactory,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 	decoder middleware.Decoder,
-) (*Server, error) {
+	controller Controller,
+) (*HTTPServer, error) {
 	mux, err := createMux(
 		hashFactory,
 		repository,
-		transactionManager,
+		controller,
 		pingables,
 		logger,
 		decoder,
@@ -65,8 +65,9 @@ func New(
 		Handler: mux,
 	}
 
-	res := &Server{
+	res := &HTTPServer{
 		cfg:        cfg,
+		controller: controller,
 		logger:     logger,
 		httpServer: srv,
 	}
@@ -74,14 +75,14 @@ func New(
 	return res, nil
 }
 
-func (s *Server) Run() error {
+func (s *HTTPServer) Run() error {
 	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server ListenAndServe failed: %w", err)
 	}
 	return nil
 }
 
-func (s *Server) Shutdown() error {
+func (s *HTTPServer) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 	defer cancel()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
@@ -93,15 +94,12 @@ func (s *Server) Shutdown() error {
 func createMux(
 	hashFactory middleware.HashFactory,
 	repository Repository,
-	transactionManager TransactionManager,
+	controller Controller,
 	pingables []handlers.Pingable,
 	logger *zap.Logger,
 	decoder middleware.Decoder,
 	trustedSubnet string,
 ) (*chi.Mux, error) {
-	service := logic.NewService(repository, logger)
-	controller := controllers.NewController(transactionManager, service, logger)
-
 	loggerMiddleware := middleware.NewLogger(logger)
 
 	var subnetFilterMiddleware middlewareFactory

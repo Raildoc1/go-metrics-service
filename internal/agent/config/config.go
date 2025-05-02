@@ -1,7 +1,10 @@
 // Package config determines flags, envs, constants and config structs
 package config
 
-import "time"
+import (
+	"go-metrics-service/internal/agent/sender/driver"
+	"time"
+)
 
 type Config struct {
 	ServerAddress   string
@@ -11,4 +14,5 @@ type Config struct {
 	PollingInterval time.Duration
 	SendingInterval time.Duration
 	RSAPublicKeyPem []byte
+	GRPC            *driver.GRPCConfig
 }

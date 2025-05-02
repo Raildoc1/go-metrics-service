@@ -7,6 +7,7 @@ import (
 	"go-metrics-service/internal/agent/config"
 	pollerPkg "go-metrics-service/internal/agent/poller"
 	senderPkg "go-metrics-service/internal/agent/sender"
+	"go-metrics-service/internal/agent/sender/driver"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/hashing"
 	"go-metrics-service/pkg/ipdeterminer"
@@ -28,12 +29,12 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage, logger)
 
-	var hashFactory senderPkg.HashFactory = nil
+	var hashFactory driver.HashFactory = nil
 	if cfg.SHA256Key != "" {
 		hashFactory = hashing.NewHMAC(cfg.SHA256Key)
 	}
 
-	var encoder senderPkg.Encoder
+	var encoder driver.Encoder
 	if cfg.RSAPublicKeyPem != nil {
 		e, err := rsahelpers.NewOAEPEncoder(cfg.RSAPublicKeyPem)
 		if err != nil {
@@ -42,15 +43,26 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 		encoder = e
 	}
 
-	sender := senderPkg.New(
-		cfg.ServerAddress,
-		cfg.RetryAttempts,
-		storage,
-		logger,
-		hashFactory,
-		encoder,
-		ip,
-	)
+	var drv senderPkg.Driver = nil
+
+	if cfg.GRPC != nil {
+		d, err := driver.NewGrpcDriver(*cfg.GRPC)
+		if err != nil {
+			return err
+		}
+		drv = d
+	} else {
+		drv = driver.NewHTTPDriver(
+			logger,
+			storage,
+			hashFactory,
+			cfg.ServerAddress,
+			encoder,
+			ip,
+		)
+	}
+
+	sender := senderPkg.New(cfg.RetryAttempts, storage, logger, drv)
 
 	rootCtx, cancelCtx := signal.NotifyContext(
 		context.Background(),
