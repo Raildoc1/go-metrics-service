@@ -27,14 +27,14 @@ func NewUpdateMetricsServer(controller Controller) *UpdateMetricsServer {
 func (s UpdateMetricsServer) UpdateMetrics(ctx context.Context, request *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
 	var response pb.UpdateMetricsResponse
 
-	metrics, err := ConvertMetrics(request.Values)
+	metrics, err := ConvertMetrics(request.GetValues())
 	if err != nil {
 		return nil, err
 	}
 
 	err = s.controller.UpdateMany(ctx, metrics)
 	if err != nil {
-		response.Error = err.Error()
+		response.SetError(err.Error())
 	}
 
 	return &response, nil
@@ -53,24 +53,24 @@ func ConvertMetrics(ms []*pb.Metric) ([]protocol.Metrics, error) {
 }
 
 func ConvertMetric(m *pb.Metric) (protocol.Metrics, error) {
-	switch m.Type {
+	switch m.GetType() {
 	case pb.Metric_COUNTER:
-		delta := m.Delta
+		delta := m.GetDelta()
 		return protocol.Metrics{
-			ID:    m.Id,
+			ID:    m.GetId(),
 			MType: protocol.Counter,
 			Value: nil,
 			Delta: &delta,
 		}, nil
 	case pb.Metric_GAUGE:
-		value := m.Value
+		value := m.GetValue()
 		return protocol.Metrics{
-			ID:    m.Id,
+			ID:    m.GetId(),
 			MType: protocol.Gauge,
 			Value: &value,
 			Delta: nil,
 		}, nil
 	default:
-		return protocol.Metrics{}, errors.New("unknown type " + m.Type.String())
+		return protocol.Metrics{}, errors.New("unknown type " + m.GetType().String())
 	}
 }

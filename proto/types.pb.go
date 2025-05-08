@@ -10,7 +10,6 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
-	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -62,19 +61,16 @@ func (x Metric_Type) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use Metric_Type.Descriptor instead.
-func (Metric_Type) EnumDescriptor() ([]byte, []int) {
-	return file_proto_types_proto_rawDescGZIP(), []int{0, 0}
-}
-
 type Metric struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type          Metric_Type            `protobuf:"varint,2,opt,name=type,proto3,enum=protocol.Metric_Type" json:"type,omitempty"`
-	Delta         int64                  `protobuf:"varint,3,opt,name=delta,proto3" json:"delta,omitempty"`
-	Value         float64                `protobuf:"fixed64,4,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Type        Metric_Type            `protobuf:"varint,2,opt,name=type,enum=protocol.Metric_Type"`
+	xxx_hidden_Delta       int64                  `protobuf:"varint,3,opt,name=delta"`
+	xxx_hidden_Value       float64                `protobuf:"fixed64,4,opt,name=value"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Metric) Reset() {
@@ -102,37 +98,137 @@ func (x *Metric) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Metric.ProtoReflect.Descriptor instead.
-func (*Metric) Descriptor() ([]byte, []int) {
-	return file_proto_types_proto_rawDescGZIP(), []int{0}
-}
-
 func (x *Metric) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Metric) GetType() Metric_Type {
 	if x != nil {
-		return x.Type
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
+			return x.xxx_hidden_Type
+		}
 	}
 	return Metric_COUNTER
 }
 
 func (x *Metric) GetDelta() int64 {
 	if x != nil {
-		return x.Delta
+		return x.xxx_hidden_Delta
 	}
 	return 0
 }
 
 func (x *Metric) GetValue() float64 {
 	if x != nil {
-		return x.Value
+		return x.xxx_hidden_Value
 	}
 	return 0
+}
+
+func (x *Metric) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *Metric) SetType(v Metric_Type) {
+	x.xxx_hidden_Type = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *Metric) SetDelta(v int64) {
+	x.xxx_hidden_Delta = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *Metric) SetValue(v float64) {
+	x.xxx_hidden_Value = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *Metric) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Metric) HasType() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Metric) HasDelta() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Metric) HasValue() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Metric) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *Metric) ClearType() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Type = Metric_COUNTER
+}
+
+func (x *Metric) ClearDelta() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Delta = 0
+}
+
+func (x *Metric) ClearValue() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Value = 0
+}
+
+type Metric_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id    *string
+	Type  *Metric_Type
+	Delta *int64
+	Value *float64
+}
+
+func (b0 Metric_builder) Build() *Metric {
+	m0 := &Metric{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Type != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_Type = *b.Type
+	}
+	if b.Delta != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_Delta = *b.Delta
+	}
+	if b.Value != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_Value = *b.Value
+	}
+	return m0
 }
 
 var File_proto_types_proto protoreflect.FileDescriptor
@@ -147,19 +243,7 @@ const file_proto_types_proto_rawDesc = "" +
 	"\x05value\x18\x04 \x01(\x01R\x05value\"\x1e\n" +
 	"\x04Type\x12\v\n" +
 	"\aCOUNTER\x10\x00\x12\t\n" +
-	"\x05GAUGE\x10\x01B Z\x1einternal/common/protocol/protob\x06proto3"
-
-var (
-	file_proto_types_proto_rawDescOnce sync.Once
-	file_proto_types_proto_rawDescData []byte
-)
-
-func file_proto_types_proto_rawDescGZIP() []byte {
-	file_proto_types_proto_rawDescOnce.Do(func() {
-		file_proto_types_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_types_proto_rawDesc), len(file_proto_types_proto_rawDesc)))
-	})
-	return file_proto_types_proto_rawDescData
-}
+	"\x05GAUGE\x10\x01B Z\x1einternal/common/protocol/protob\beditionsp\xe8\a"
 
 var file_proto_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_types_proto_msgTypes = make([]protoimpl.MessageInfo, 1)

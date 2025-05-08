@@ -10,7 +10,6 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
-	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -22,10 +21,10 @@ const (
 )
 
 type UpdateMetricsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Values        []*Metric              `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Values *[]*Metric             `protobuf:"bytes,1,rep,name=values"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateMetricsRequest) Reset() {
@@ -53,23 +52,40 @@ func (x *UpdateMetricsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateMetricsRequest.ProtoReflect.Descriptor instead.
-func (*UpdateMetricsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_update_metrics_proto_rawDescGZIP(), []int{0}
-}
-
 func (x *UpdateMetricsRequest) GetValues() []*Metric {
 	if x != nil {
-		return x.Values
+		if x.xxx_hidden_Values != nil {
+			return *x.xxx_hidden_Values
+		}
 	}
 	return nil
 }
 
+func (x *UpdateMetricsRequest) SetValues(v []*Metric) {
+	x.xxx_hidden_Values = &v
+}
+
+type UpdateMetricsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Values []*Metric
+}
+
+func (b0 UpdateMetricsRequest_builder) Build() *UpdateMetricsRequest {
+	m0 := &UpdateMetricsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Values = &b.Values
+	return m0
+}
+
 type UpdateMetricsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Error       *string                `protobuf:"bytes,1,opt,name=error"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *UpdateMetricsResponse) Reset() {
@@ -97,16 +113,48 @@ func (x *UpdateMetricsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateMetricsResponse.ProtoReflect.Descriptor instead.
-func (*UpdateMetricsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_update_metrics_proto_rawDescGZIP(), []int{1}
-}
-
 func (x *UpdateMetricsResponse) GetError() string {
 	if x != nil {
-		return x.Error
+		if x.xxx_hidden_Error != nil {
+			return *x.xxx_hidden_Error
+		}
+		return ""
 	}
 	return ""
+}
+
+func (x *UpdateMetricsResponse) SetError(v string) {
+	x.xxx_hidden_Error = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *UpdateMetricsResponse) HasError() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *UpdateMetricsResponse) ClearError() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Error = nil
+}
+
+type UpdateMetricsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Error *string
+}
+
+func (b0 UpdateMetricsResponse_builder) Build() *UpdateMetricsResponse {
+	m0 := &UpdateMetricsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Error != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_Error = b.Error
+	}
+	return m0
 }
 
 var File_proto_update_metrics_proto protoreflect.FileDescriptor
@@ -119,19 +167,7 @@ const file_proto_update_metrics_proto_rawDesc = "" +
 	"\x15UpdateMetricsResponse\x12\x14\n" +
 	"\x05error\x18\x01 \x01(\tR\x05error2a\n" +
 	"\rUpdateMetrics\x12P\n" +
-	"\rUpdateMetrics\x12\x1e.protocol.UpdateMetricsRequest\x1a\x1f.protocol.UpdateMetricsResponseB Z\x1einternal/common/protocol/protob\x06proto3"
-
-var (
-	file_proto_update_metrics_proto_rawDescOnce sync.Once
-	file_proto_update_metrics_proto_rawDescData []byte
-)
-
-func file_proto_update_metrics_proto_rawDescGZIP() []byte {
-	file_proto_update_metrics_proto_rawDescOnce.Do(func() {
-		file_proto_update_metrics_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_update_metrics_proto_rawDesc), len(file_proto_update_metrics_proto_rawDesc)))
-	})
-	return file_proto_update_metrics_proto_rawDescData
-}
+	"\rUpdateMetrics\x12\x1e.protocol.UpdateMetricsRequest\x1a\x1f.protocol.UpdateMetricsResponseB Z\x1einternal/common/protocol/protob\beditionsp\xe8\a"
 
 var file_proto_update_metrics_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_proto_update_metrics_proto_goTypes = []any{

@@ -39,15 +39,15 @@ func (s *GrpcDriver) SendUpdates(ctx context.Context, metrics []protocol.Metrics
 	if err != nil {
 		return err
 	}
-	request := &pb.UpdateMetricsRequest{
+	request := pb.UpdateMetricsRequest_builder{
 		Values: ms,
-	}
+	}.Build()
 	response, err := s.updateMetrics.UpdateMetrics(ctx, request)
 	if err != nil {
 		return err
 	}
-	if response.Error != "" {
-		return errors.New(response.Error)
+	if response.GetError() != "" {
+		return errors.New(response.GetError())
 	}
 	return nil
 }
@@ -67,17 +67,23 @@ func ConvertMetrics(ms []protocol.Metrics) ([]*pb.Metric, error) {
 func ConvertMetric(m protocol.Metrics) (*pb.Metric, error) {
 	switch m.MType {
 	case protocol.Gauge:
-		return &pb.Metric{
-			Id:    m.ID,
-			Type:  pb.Metric_GAUGE,
-			Value: *m.Value,
-		}, nil
+		id := m.ID
+		metricType := pb.Metric_GAUGE
+		val := *m.Value
+		return pb.Metric_builder{
+			Id:    &id,
+			Type:  &metricType,
+			Value: &val,
+		}.Build(), nil
 	case protocol.Counter:
-		return &pb.Metric{
-			Id:    m.ID,
-			Type:  pb.Metric_COUNTER,
-			Delta: *m.Delta,
-		}, nil
+		id := m.ID
+		metricType := pb.Metric_COUNTER
+		delta := *m.Delta
+		return pb.Metric_builder{
+			Id:    &id,
+			Type:  &metricType,
+			Delta: &delta,
+		}.Build(), nil
 	default:
 		return nil, errors.New("unknown metric type " + m.MType)
 	}
