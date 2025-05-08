@@ -1,4 +1,4 @@
-package sender
+package driver
 
 import (
 	"go.uber.org/zap"

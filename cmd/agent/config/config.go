@@ -8,6 +8,7 @@ import (
 	common "go-metrics-service/cmd/common/config"
 	"go-metrics-service/cmd/common/config/flagtypes"
 	agent "go-metrics-service/internal/agent/config"
+	"go-metrics-service/internal/agent/sender/driver"
 	"os"
 	"strconv"
 	"time"
@@ -25,6 +26,9 @@ const (
 	rsaPublicKeyFileFlag       = "crypto-key"
 	rsaPublicKeyFileEnv        = "CRYPTO_KEY"
 	rsaPublicKeyFileJSON       = "crypto_key"
+	grpcPortFlag               = "grpc-port"
+	grpcPortEnv                = "GRPC_PORT"
+	grpcPortJSON               = "grpc_port"
 )
 
 const (
@@ -35,6 +39,7 @@ const (
 	defaultSHA256Key       = ""
 )
 
+var defaultGRPCPort *uint16 = nil
 var defaultRetryAttempts = []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
 
 type Config struct {
@@ -50,6 +55,7 @@ func Load() (Config, error) {
 	rsaPublicKeyFilePath := defaultRSAPublicKey
 	sha256Key := defaultSHA256Key
 	rateLimit := defaultRateLimit
+	grpcPort := defaultGRPCPort
 
 	// Flags Definition.
 
@@ -73,6 +79,9 @@ func Load() (Config, error) {
 
 	rsaPublicKeyFilePathFlagVal := flagtypes.NewString()
 	flag.Var(rsaPublicKeyFilePathFlagVal, rsaPublicKeyFileFlag, "RSA public key file path")
+
+	grpcPortFlagVal := flagtypes.NewString()
+	flag.Var(grpcPortFlagVal, grpcPortFlag, "Server GRPC port")
 
 	flag.Parse()
 
@@ -111,6 +120,13 @@ func Load() (Config, error) {
 		if val, ok := rawJSON[rsaPublicKeyFileJSON]; ok {
 			rsaPublicKeyFilePath = val.(string)
 		}
+		if val, ok := rawJSON[grpcPortJSON]; ok {
+			i, ok := val.(uint16)
+			if !ok {
+				return Config{}, fmt.Errorf("invalid value for grpc port: %s", val)
+			}
+			grpcPort = &i
+		}
 	}
 
 	// Flags Parse.
@@ -137,6 +153,15 @@ func Load() (Config, error) {
 
 	if val, ok := rsaPublicKeyFilePathFlagVal.Value(); ok {
 		rsaPublicKeyFilePath = val
+	}
+
+	if val, ok := grpcPortFlagVal.Value(); ok {
+		rawPort, err := strconv.Atoi(val)
+		if err != nil {
+			return Config{}, fmt.Errorf("invalid value for grpc port: %w", err)
+		}
+		port := uint16(rawPort)
+		grpcPort = &port
 	}
 
 	// Environment Variables.
@@ -177,6 +202,15 @@ func Load() (Config, error) {
 		rsaPublicKeyFilePath = valStr
 	}
 
+	if valStr, ok := os.LookupEnv(grpcPortEnv); ok {
+		rawPort, err := strconv.Atoi(valStr)
+		if err != nil {
+			return Config{}, fmt.Errorf("invalid value for grpc port: %w", err)
+		}
+		port := uint16(rawPort)
+		grpcPort = &port
+	}
+
 	// Validation.
 
 	if sendingInterval < time.Duration(0) {
@@ -199,6 +233,16 @@ func Load() (Config, error) {
 		rsaPublicKeyPem = pub
 	}
 
+	// GRPC Config.
+
+	var grpcConfig *driver.GRPCConfig = nil
+
+	if grpcPort != nil {
+		grpcConfig = &driver.GRPCConfig{
+			Port: *grpcPort,
+		}
+	}
+
 	return Config{
 		Agent: agent.Config{
 			ServerAddress:   serverAddress,
@@ -208,6 +252,7 @@ func Load() (Config, error) {
 			RetryAttempts:   defaultRetryAttempts,
 			RateLimit:       rateLimit,
 			RSAPublicKeyPem: rsaPublicKeyPem,
+			GRPC:            grpcConfig,
 		},
 		Production: false,
 	}, nil
