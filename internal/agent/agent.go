@@ -9,6 +9,7 @@ import (
 	senderPkg "go-metrics-service/internal/agent/sender"
 	storagePkg "go-metrics-service/internal/agent/storage"
 	"go-metrics-service/internal/common/hashing"
+	"go-metrics-service/pkg/ipdeterminer"
 	"go-metrics-service/pkg/rsahelpers"
 	"os/signal"
 	"syscall"
@@ -19,6 +20,11 @@ import (
 )
 
 func Run(cfg *config.Config, logger *zap.Logger) error {
+	ip, err := ipdeterminer.GetPreferredOutboundIP(logger)
+	if err != nil {
+		return fmt.Errorf("getting IP failed: %w", err)
+	}
+
 	storage := storagePkg.New()
 	poller := pollerPkg.New(storage, logger)
 
@@ -43,6 +49,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 		logger,
 		hashFactory,
 		encoder,
+		ip,
 	)
 
 	rootCtx, cancelCtx := signal.NotifyContext(
