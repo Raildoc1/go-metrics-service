@@ -10,4 +10,5 @@ type Config struct {
 	StoreInterval   time.Duration
 	ShutdownTimeout time.Duration
 	NeedRestore     bool
+	TrustedSubnet   string
 }

@@ -3,10 +3,12 @@ package server
 import (
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/common/protocol"
+	"go-metrics-service/internal/server/controllers"
 	"go-metrics-service/internal/server/data/repositories/memrepository"
 	"go-metrics-service/internal/server/data/storages"
 	"go-metrics-service/internal/server/data/storages/memstorage"
 	"go-metrics-service/internal/server/handlers"
+	"go-metrics-service/internal/server/logic"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,24 +19,31 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func setupServer() *httptest.Server {
+func setupServer() (*httptest.Server, error) {
 	logger := logging.CreateZapLogger(true)
 	memStorage := memstorage.New(logger)
 	memRepository := memrepository.New(memStorage, logger)
 	transactionManager := storages.NewDummyTransactionsManager()
-	mux := createMux(
+	service := logic.NewService(memRepository, logger)
+	controller := controllers.NewController(transactionManager, service, logger)
+	mux, err := createMux(
 		nil,
 		memRepository,
-		transactionManager,
+		controller,
 		make([]handlers.Pingable, 0),
 		logger,
 		nil,
+		"",
 	)
-	return httptest.NewServer(mux)
+	if err != nil {
+		return nil, err
+	}
+	return httptest.NewServer(mux), nil
 }
 
 func TestUpdate(t *testing.T) {
-	server := setupServer()
+	server, err := setupServer()
+	assert.NoError(t, err)
 	defer server.Close()
 
 	type want struct {

@@ -8,6 +8,7 @@ import (
 	"go-metrics-service/internal/common/hashing"
 	"go-metrics-service/internal/common/logging"
 	"go-metrics-service/internal/server"
+	"go-metrics-service/internal/server/controllers"
 	"go-metrics-service/internal/server/data/repositories/dbrepository"
 	"go-metrics-service/internal/server/data/repositories/memrepository"
 	"go-metrics-service/internal/server/data/storages"
@@ -16,6 +17,7 @@ import (
 	"go-metrics-service/internal/server/data/storages/memstorage"
 	"go-metrics-service/internal/server/database"
 	"go-metrics-service/internal/server/handlers"
+	"go-metrics-service/internal/server/logic"
 	"go-metrics-service/internal/server/middleware"
 	"go-metrics-service/pkg/rsahelpers"
 	"log"
@@ -79,7 +81,7 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 
 	var pingables []handlers.Pingable
 	var rep server.Repository
-	var tm server.TransactionManager
+	var tm controllers.TransactionManager
 
 	switch {
 	case cfg.Database.ConnectionString != "":
@@ -129,19 +131,24 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 		decoder = d
 	}
 
-	srv := server.New(
+	service := logic.NewService(rep, logger)
+	controller := controllers.NewController(tm, service, logger)
+	httpServer, err := server.NewHTTP(
 		cfg.Server,
 		rep,
-		tm,
 		hashFactory,
 		pingables,
 		logger,
 		decoder,
+		controller,
 	)
+	if err != nil {
+		return err
+	}
 
 	g.Go(func() error {
-		if err := srv.Run(); err != nil {
-			return fmt.Errorf("server error: %w", err)
+		if err := httpServer.Run(); err != nil {
+			return fmt.Errorf("http server error: %w", err)
 		}
 		return nil
 	})
@@ -149,8 +156,26 @@ func run(cfg *config.Config, logger *zap.Logger) error {
 	g.Go(func() error {
 		defer logger.Info("Shutting down server")
 		<-ctx.Done()
-		if err := srv.Shutdown(); err != nil {
-			return fmt.Errorf("failed to shutdown server: %w", err)
+		if err := httpServer.Shutdown(); err != nil {
+			return fmt.Errorf("failed to shutdown http server: %w", err)
+		}
+		return nil
+	})
+
+	grpcServer := server.NewGRPC(cfg.GRPCServer, controller)
+
+	g.Go(func() error {
+		if err := grpcServer.Run(); err != nil {
+			return fmt.Errorf("grpc server error: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		defer logger.Info("Shutting down server")
+		<-ctx.Done()
+		if err := httpServer.Shutdown(); err != nil {
+			return fmt.Errorf("failed to shutdown grpc server: %w", err)
 		}
 		return nil
 	})
